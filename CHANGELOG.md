@@ -3,7 +3,7 @@
 Notable changes per release. Versions are evals4j's own; the OpenEvals version it ports is recorded
 in [PARITY.md](PARITY.md).
 
-## 0.2.0 — unreleased
+## 0.2.0 — 2026-08-03
 
 Upstream OpenEvals has had no functional change since its 0.2.0 tag, so this release is about
 evals4j itself: one real bug, two capabilities the docs promised but never shipped, and an
