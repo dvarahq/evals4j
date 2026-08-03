@@ -18,11 +18,11 @@
     <maven.deploy.skip>true</maven.deploy.skip>
     <maven.install.skip>true</maven.install.skip>
     <!--
-      central-publishing-maven-plugin runs as a build extension and replaces the deploy
-      participant, so it does not honour maven.deploy.skip. Without this the examples would be
-      bundled into the Maven Central deployment — and a publish to Central cannot be undone.
+      Do NOT set skipPublishing here. It is not per-module: the publishing plugin performs the
+      whole upload during the last reactor module's deploy phase, and this module is last — so
+      setting it silently skipped the entire deployment while the build still went green.
+      Keeping this module out of the bundle is the root POM's excludeArtifacts, not this.
     -->
-    <skipPublishing>true</skipPublishing>
   </properties>
 
   <dependencies>
