@@ -19,16 +19,13 @@
       <groupId>io.github.grabdoc</groupId>
       <artifactId>evals4j-core</artifactId>
     </dependency>
+    <!--
+      spring-ai-model carries both ChatModel and StructuredOutputChatOptions, so schema
+      enforcement needs no provider-specific dependency.
+    -->
     <dependency>
       <groupId>org.springframework.ai</groupId>
-      <artifactId>spring-ai-client-chat</artifactId>
-    </dependency>
-
-    <!-- Optional: enables provider-native JSON-schema response format when present. -->
-    <dependency>
-      <groupId>org.springframework.ai</groupId>
-      <artifactId>spring-ai-openai</artifactId>
-      <optional>true</optional>
+      <artifactId>spring-ai-model</artifactId>
     </dependency>
 
     <dependency>
