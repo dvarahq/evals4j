@@ -1,0 +1,55 @@
+evals4j
+Copyright (c) 2026 evals4j contributors
+
+------------------------------------------------------------------------------
+This product contains material derived from OpenEvals.
+
+    OpenEvals — https://github.com/langchain-ai/openevals
+    Copyright (c) 2025 LangChain, Inc.
+    Licensed under the MIT License.
+
+What is derived:
+
+  * The 33 evaluator prompt templates in
+    evals4j-core/src/main/java/io/github/grabdoc/evals4j/prompt/Prompts.java
+    are reproduced verbatim from openevals/python/openevals/prompts/**.
+
+  * The following algorithms are ports of the corresponding OpenEvals
+    implementations, retaining their observable behaviour:
+      - the LLM-as-judge output schema construction and score extraction
+        (openevals/python/openevals/llm.py)
+      - the scorer-to-result normalization contract
+        (openevals/python/openevals/utils.py)
+      - message normalization and trajectory rendering
+        (openevals/python/openevals/utils.py, trajectory/utils.py)
+      - trajectory matching in strict/unordered/subset/superset modes and the
+        tool-argument matchers (openevals/python/openevals/trajectory/**)
+      - structured/JSON match scoring and aggregation
+        (openevals/python/openevals/json/match.py)
+      - markdown code-block extraction (openevals/python/openevals/code/base.py)
+      - the multi-turn simulation loop and simulated user
+        (openevals/python/openevals/simulators/**)
+
+The MIT License text under which the above material is licensed:
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+------------------------------------------------------------------------------
+evals4j is an independent project. It is not affiliated with, sponsored by, or
+endorsed by LangChain, Inc.
