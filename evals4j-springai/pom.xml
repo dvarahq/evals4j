@@ -35,5 +35,11 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!-- Integration tests only; they skip themselves without OPENAI_API_KEY. -->
+    <dependency>
+      <groupId>org.springframework.ai</groupId>
+      <artifactId>spring-ai-openai</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

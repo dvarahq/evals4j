@@ -31,5 +31,11 @@
       <type>test-jar</type>
       <scope>test</scope>
     </dependency>
+    <!-- Integration tests only; they skip themselves without OPENAI_API_KEY. -->
+    <dependency>
+      <groupId>dev.langchain4j</groupId>
+      <artifactId>langchain4j-open-ai</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
