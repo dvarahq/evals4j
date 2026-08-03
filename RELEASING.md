@@ -54,7 +54,8 @@ gpg --armor --export-secret-keys <KEY_ID>
 
 ### 3. Add the repository secrets
 
-**Settings → Secrets and variables → Actions**:
+**Settings → Secrets and variables → Actions** on
+[dvarahq/evals4j](https://github.com/dvarahq/evals4j/settings/secrets/actions):
 
 | secret | what it is |
 |---|---|
@@ -64,6 +65,95 @@ gpg --armor --export-secret-keys <KEY_ID>
 | `GPG_PASSPHRASE` | the key's passphrase |
 
 Generate the user token under **Account → Generate User Token** in the portal.
+
+Or from the command line:
+
+```bash
+gh secret set CENTRAL_USERNAME --repo dvarahq/evals4j
+gh secret set CENTRAL_PASSWORD --repo dvarahq/evals4j
+gh secret set GPG_PASSPHRASE   --repo dvarahq/evals4j
+gh secret set GPG_PRIVATE_KEY  --repo dvarahq/evals4j < private-key.asc
+```
+
+Each prompts for the value without echoing it. Use the file form for the key — it is multi-line, and
+pasting it at a prompt mangles it.
+
+> Secrets do **not** survive a repository transfer, and they are not inherited from the org unless
+> defined at org level. Both were empty after the move to `dvarahq`.
+
+### 4. How the credentials reach Maven
+
+Nothing reads a secret directly. The workflow turns each one into an environment variable, and a
+different tool picks each up — worth knowing, because a rename on either side breaks the chain
+silently.
+
+| GitHub secret | environment variable | who reads it |
+|---|---|---|
+| `CENTRAL_USERNAME` | `MAVEN_USERNAME` | `settings.xml` → `central-publishing-maven-plugin` |
+| `CENTRAL_PASSWORD` | `MAVEN_PASSWORD` | `settings.xml` → `central-publishing-maven-plugin` |
+| `GPG_PASSPHRASE` | `MAVEN_GPG_PASSPHRASE` | `maven-gpg-plugin` reads this env var by default |
+| `GPG_PRIVATE_KEY` | — | imported into the keyring by `actions/setup-java` |
+
+The Central credentials are the indirect pair. `actions/setup-java` is configured with:
+
+```yaml
+server-id: central
+server-username: MAVEN_USERNAME
+server-password: MAVEN_PASSWORD
+```
+
+which makes it write `~/.m2/settings.xml` containing a `central` server whose values are
+`${env.MAVEN_USERNAME}` / `${env.MAVEN_PASSWORD}` placeholders. Maven resolves those at run time from
+the environment. The plugin looks the credentials up by the server id `central`, which is set in the
+root POM as `<publishingServerId>`. **The Maven-side name is `central` in three places and they must
+agree**: `server-id` here, `publishingServerId` in the POM, and the `<server><id>` in `settings.xml`.
+
+The GPG passphrase is the direct one: `maven-gpg-plugin`'s `passphraseEnvName` defaults to
+`MAVEN_GPG_PASSPHRASE`, so exporting that variable is enough — no `settings.xml` entry needed.
+
+### 5. Releasing from a laptop
+
+The same environment variables work locally, but **Maven will not read `MAVEN_USERNAME` on its own**
+— that only works in CI because `setup-java` generated a `settings.xml` referencing it. Locally you
+supply the equivalent yourself:
+
+```xml
+<!-- ~/.m2/settings.xml -->
+<settings>
+  <servers>
+    <server>
+      <id>central</id>
+      <username>${env.CENTRAL_USERNAME}</username>
+      <password>${env.CENTRAL_PASSWORD}</password>
+    </server>
+  </servers>
+</settings>
+```
+
+Then:
+
+```bash
+export CENTRAL_USERNAME='...'          # leading space keeps it out of shell history
+export CENTRAL_PASSWORD='...'
+export MAVEN_GPG_PASSPHRASE='...'
+
+./mvnw -Prelease deploy -DskipTests
+```
+
+Referencing `${env.…}` rather than pasting the values means `settings.xml` holds no secrets and can
+be kept in dotfiles.
+
+If you would rather not import the signing key into your local keyring, `maven-gpg-plugin` can take
+it from the environment too — `MAVEN_GPG_KEY` (its default `keyEnvName`) accepts the armoured
+private key:
+
+```bash
+export MAVEN_GPG_KEY="$(cat private-key.asc)"
+export MAVEN_GPG_PASSPHRASE='...'
+```
+
+Prefer the tagged workflow for real releases. Local publishing is for reproducing a CI failure, and
+it is easy to publish from a dirty tree by accident — Central cannot un-publish a version.
 
 ## Cutting a release
 
@@ -108,8 +198,15 @@ git commit -am "build: start 0.2.0-SNAPSHOT"
 
 ## If it fails
 
-**"Unable to get publisher server properties for server id: central"** — the `CENTRAL_USERNAME` /
-`CENTRAL_PASSWORD` secrets are missing or misnamed.
+**"Unable to get publisher server properties for server id: central"** — Maven found no `central`
+server, so the credentials never reached the plugin. Work back along the chain in §4: is the secret
+set, does the workflow map it to `MAVEN_USERNAME` / `MAVEN_PASSWORD`, and does `settings.xml` have a
+`<server>` with id `central`? Running locally without the `settings.xml` from §5 produces exactly
+this error, because there is nothing to resolve `${env.…}` into.
+
+**Credentials look set but Central returns 401** — the Central Portal wants the **user token**, not
+your portal login. Regenerate it under **Account → Generate User Token**; the username is an opaque
+string, not an email.
 
 **Signing hangs, then the job times out** — gpg is waiting for a passphrase prompt. The release
 profile passes `--pinentry-mode loopback` to prevent this; check that `GPG_PASSPHRASE` is set and
