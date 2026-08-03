@@ -33,14 +33,6 @@ result.comment();  // "The response includes an unnecessary pleasantry ... Thus,
 
 ## Install
 
-> **Not yet released.** Nothing has been published under `com.dvarahq.oss` yet, so the Maven Central
-> badge above reads *not found* and the coordinates below will not resolve. Until the first release,
-> build from source:
->
-> ```bash
-> git clone https://github.com/dvarahq/evals4j.git && cd evals4j && ./mvnw install
-> ```
-
 Requires **Java 17+**. Add the BOM, then whichever modules you need.
 
 ```xml
