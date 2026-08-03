@@ -12,7 +12,7 @@ import java.nio.file.Path;
  * hold the tracer itself or remember an {@code @AfterAll}.
  *
  * <pre>{@code
- * @ExtendWith(EvalReportExtension.class)
+ * @EvalSuite                      // or @ExtendWith(EvalReportExtension.class)
  * class ConcisenessEvalTest {
  *
  *     @Test
@@ -44,6 +44,13 @@ import java.nio.file.Path;
  * <p>Set {@value #REPORT_PATH_PROPERTY} to choose where it goes; it defaults to
  * {@value #DEFAULT_REPORT_PATH}. Nothing is written when no results were collected, so registering
  * the extension on a class that records none leaves no empty file.
+ *
+ * <p><strong>Automatic registration.</strong> This extension is declared in {@code META-INF/services},
+ * so a build that sets {@code junit.jupiter.extensions.autodetection.enabled=true} gets it on every
+ * test class without any annotation — which is what you want when a whole module is eval suites.
+ * JUnit leaves autodetection off by default, so putting this jar on the classpath changes nothing on
+ * its own. Even when it is on, a class that records no results writes no file, so ordinary unit tests
+ * in the same run are unaffected.
  */
 public final class EvalReportExtension implements ParameterResolver, AfterAllCallback {
 

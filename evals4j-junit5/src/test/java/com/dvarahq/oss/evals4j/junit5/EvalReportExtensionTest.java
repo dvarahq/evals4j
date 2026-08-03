@@ -75,6 +75,52 @@ class EvalReportExtensionTest {
     }
 
     @Test
+    void evalSuiteRegistersTheExtension(@TempDir Path directory) throws Exception {
+        Path report = directory.resolve("evals.md");
+        System.setProperty(EvalReportExtension.REPORT_PATH_PROPERTY, report.toString());
+
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(AnnotatedSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(1).failed(0));
+
+        assertThat(Files.readString(report)).contains(ExactMatch.FEEDBACK_KEY);
+    }
+
+    @Test
+    void autodetectionRegistersTheExtensionWithoutAnyAnnotation(@TempDir Path directory)
+            throws Exception {
+        Path report = directory.resolve("evals.md");
+        System.setProperty(EvalReportExtension.REPORT_PATH_PROPERTY, report.toString());
+
+        // The suite below carries no annotation at all: only the META-INF/services declaration can
+        // resolve its EvalReport parameter, so this fails if that file is missing or misnamed.
+        EngineTestKit.engine("junit-jupiter")
+                .configurationParameter("junit.jupiter.extensions.autodetection.enabled", "true")
+                .selectors(selectClass(UnannotatedSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(1).failed(0));
+
+        assertThat(Files.readString(report)).contains(ExactMatch.FEEDBACK_KEY);
+    }
+
+    @Test
+    void withoutAutodetectionAnUnannotatedSuiteIsNotExtended(@TempDir Path directory) {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+
+        // Autodetection is off by default, so the jar being on the classpath must not silently
+        // extend everything: the unresolvable parameter is the proof.
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(UnannotatedSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(0).failed(1));
+    }
+
+    @Test
     void defaultsToTheTargetDirectoryWhenNothingIsConfigured() {
         assertThat(EvalReportExtension.reportPath())
                 .isEqualTo(Path.of(EvalReportExtension.DEFAULT_REPORT_PATH));
@@ -101,6 +147,24 @@ class EvalReportExtensionTest {
         @Test
         void alsoScores(EvalReport report) {
             ExactMatch.create().withTracer(report).evaluate(EvalRequest.of(null, "world", "world"));
+        }
+    }
+
+    @EvalSuite
+    static class AnnotatedSuite {
+
+        @Test
+        void scoresUnderTheComposedAnnotation(EvalReport report) {
+            ExactMatch.create().withTracer(report).evaluate(EvalRequest.of(null, "same", "same"));
+        }
+    }
+
+    /** Deliberately unannotated — only autodetection can supply its parameter. */
+    static class UnannotatedSuite {
+
+        @Test
+        void scoresWithoutBeingAnnotated(EvalReport report) {
+            ExactMatch.create().withTracer(report).evaluate(EvalRequest.of(null, "auto", "auto"));
         }
     }
 

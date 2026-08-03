@@ -17,6 +17,12 @@ In progress. `main` builds as `0.3.0-SNAPSHOT`; the version on Maven Central is
 
   Wiring a tracer into an evaluator stays explicit (`.tracer(report)`): an evaluator takes its tracer
   at construction, and a global default one would be shared mutable state across every module.
+- `@EvalSuite`, a composed annotation equivalent to `@ExtendWith(EvalReportExtension.class)`. It
+  carries no attributes on purpose — the obvious one would be a report path, but the report is one
+  per run, so two classes naming different files would have no defensible winner.
+- Automatic registration through `META-INF/services`, for a build that sets
+  `junit.jupiter.extensions.autodetection.enabled=true` and wants no annotation at all. JUnit leaves
+  autodetection off by default, so the jar on its own still changes nothing.
 
 ## 0.2.0 — 2026-08-03
 
