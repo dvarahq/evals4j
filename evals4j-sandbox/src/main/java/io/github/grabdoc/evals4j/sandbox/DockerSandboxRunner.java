@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -84,7 +85,9 @@ public final class DockerSandboxRunner implements SandboxRunner {
         Path directory = null;
         try {
             directory = Files.createTempDirectory("evals4j-docker");
-            Files.writeString(directory.resolve(request.fileName()), request.code(), StandardCharsets.UTF_8);
+            Path file = directory.resolve(request.fileName());
+            Files.writeString(file, request.code(), StandardCharsets.UTF_8);
+            makeWorldReadable(directory, file);
 
             List<String> command = new ArrayList<>(List.of(
                     dockerCommand, "run", "--rm",
@@ -134,6 +137,28 @@ public final class DockerSandboxRunner implements SandboxRunner {
             throw new IllegalStateException("Interrupted while running the sandboxed code", e);
         } finally {
             LocalProcessSandboxRunner.deleteRecursively(directory);
+        }
+    }
+
+    /**
+     * Makes the mounted code readable by whatever uid the container runs as.
+     *
+     * <p>Java creates a temp directory mode {@code 0700} owned by the current user. Container root
+     * would normally read it anyway by bypassing permission checks, but that bypass is
+     * {@code CAP_DAC_OVERRIDE} — which {@code --cap-drop ALL} takes away. Without this the container
+     * fails with "Permission denied" on Linux, while macOS hides the problem because Docker
+     * Desktop's file sharing normalizes ownership.
+     *
+     * <p>Widening these permissions is safe: the directory is a throwaway holding only the code that
+     * was just written to it, and it is mounted read-only.
+     */
+    private static void makeWorldReadable(Path directory, Path file) {
+        try {
+            Files.setPosixFilePermissions(
+                    directory, PosixFilePermissions.fromString("rwxr-xr-x"));
+            Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rw-r--r--"));
+        } catch (UnsupportedOperationException | IOException e) {
+            // Non-POSIX filesystem (Windows); permissions are not the gate there.
         }
     }
 
