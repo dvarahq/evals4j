@@ -1,7 +1,9 @@
 package com.dvarahq.oss.evals4j.langchain4j;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import com.dvarahq.oss.evals4j.internal.Json;
@@ -46,6 +48,43 @@ public final class LangChain4jMessages {
         return message.content() instanceof String string ? string : Json.write(message.content());
     }
 
+    /**
+     * Converts a LangChain4j conversation into evals4j messages.
+     *
+     * <p>This is how a real agent run reaches the trajectory evaluators: take the messages the agent
+     * produced, convert them, and hand them to {@code TrajectoryMatchEvaluator} or
+     * {@code TrajectoryLlmAsJudge} as the outputs.
+     *
+     * <pre>{@code
+     * List<ChatMessage> trajectory = LangChain4jMessages.fromLangChain4j(chatMemory.messages());
+     * evaluator.evaluate(EvalRequest.of(null, trajectory, referenceTrajectory));
+     * }</pre>
+     *
+     * <p>Tool calls are preserved with their ids, names and raw argument JSON, which is what the
+     * trajectory matchers compare on.
+     */
+    public static List<ChatMessage> fromLangChain4j(
+            List<dev.langchain4j.data.message.ChatMessage> messages) {
+        List<ChatMessage> converted = new ArrayList<>(messages.size());
+        for (dev.langchain4j.data.message.ChatMessage message : messages) {
+            converted.add(fromLangChain4j(message));
+        }
+        return converted;
+    }
+
+    /** Converts a single LangChain4j message. */
+    public static ChatMessage fromLangChain4j(dev.langchain4j.data.message.ChatMessage message) {
+        return switch (message.type()) {
+            case SYSTEM -> ChatMessage.system(((SystemMessage) message).text());
+            case AI -> fromLangChain4j((AiMessage) message);
+            case TOOL_EXECUTION_RESULT -> {
+                ToolExecutionResultMessage result = (ToolExecutionResultMessage) message;
+                yield ChatMessage.tool(result.text(), result.id());
+            }
+            default -> ChatMessage.user(textOf((UserMessage) message));
+        };
+    }
+
     public static ChatMessage fromLangChain4j(AiMessage message) {
         List<ToolCall> toolCalls = new ArrayList<>();
         if (message.hasToolExecutionRequests()) {
@@ -55,5 +94,24 @@ public final class LangChain4jMessages {
         return new ChatMessage(
                 null, ChatMessage.ROLE_ASSISTANT, message.text() == null ? "" : message.text(),
                 toolCalls, null);
+    }
+
+    /**
+     * The text of a user message.
+     *
+     * <p>A multimodal user message has several contents; only the textual ones are joined, matching
+     * how the outbound direction flattens content. The judge prompts read text.
+     */
+    private static String textOf(UserMessage message) {
+        StringBuilder text = new StringBuilder();
+        for (Content content : message.contents()) {
+            if (content instanceof TextContent textContent) {
+                if (text.length() > 0) {
+                    text.append('\n');
+                }
+                text.append(textContent.text());
+            }
+        }
+        return text.toString();
     }
 }

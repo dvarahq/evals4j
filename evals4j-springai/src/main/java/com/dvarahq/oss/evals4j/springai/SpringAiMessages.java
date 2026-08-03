@@ -2,6 +2,7 @@ package com.dvarahq.oss.evals4j.springai;
 
 import com.dvarahq.oss.evals4j.internal.Json;
 import com.dvarahq.oss.evals4j.message.ChatMessage;
+import com.dvarahq.oss.evals4j.message.ToolCall;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -46,5 +47,66 @@ public final class SpringAiMessages {
      */
     private static String textOf(ChatMessage message) {
         return message.content() instanceof String string ? string : Json.write(message.content());
+    }
+
+    /**
+     * Converts a Spring AI conversation into evals4j messages.
+     *
+     * <p>This is how a real agent run reaches the trajectory evaluators: take the messages the agent
+     * produced, convert them, and hand them to
+     * {@code TrajectoryMatchEvaluator} or {@code TrajectoryLlmAsJudge} as the outputs.
+     *
+     * <pre>{@code
+     * List<ChatMessage> trajectory = SpringAiMessages.fromSpringAi(chatResponseMessages);
+     * evaluator.evaluate(EvalRequest.of(null, trajectory, referenceTrajectory));
+     * }</pre>
+     *
+     * <p>Tool calls are preserved with their ids, names and raw argument JSON, which is what the
+     * trajectory matchers compare on. A {@link ToolResponseMessage} carrying several responses
+     * expands to one message each, matching the OpenAI wire shape evals4j uses internally.
+     */
+    public static List<ChatMessage> fromSpringAi(List<Message> messages) {
+        List<ChatMessage> converted = new ArrayList<>(messages.size());
+        for (Message message : messages) {
+            if (message instanceof ToolResponseMessage toolResponses) {
+                for (ToolResponseMessage.ToolResponse response : toolResponses.getResponses()) {
+                    converted.add(ChatMessage.tool(response.responseData(), response.id()));
+                }
+            } else {
+                converted.add(fromSpringAi(message));
+            }
+        }
+        return converted;
+    }
+
+    /**
+     * Converts a single Spring AI message.
+     *
+     * <p>For a {@link ToolResponseMessage} only the first response is returned; use
+     * {@link #fromSpringAi(List)} when a message may carry several.
+     */
+    public static ChatMessage fromSpringAi(Message message) {
+        String text = message.getText() == null ? "" : message.getText();
+        return switch (message.getMessageType()) {
+            case SYSTEM -> ChatMessage.system(text);
+            case ASSISTANT -> assistantFrom((AssistantMessage) message, text);
+            case TOOL -> {
+                ToolResponseMessage.ToolResponse first =
+                        ((ToolResponseMessage) message).getResponses().get(0);
+                yield ChatMessage.tool(first.responseData(), first.id());
+            }
+            default -> ChatMessage.user(text);
+        };
+    }
+
+    private static ChatMessage assistantFrom(AssistantMessage message, String text) {
+        if (!message.hasToolCalls()) {
+            return ChatMessage.assistant(text);
+        }
+        List<ToolCall> toolCalls = new ArrayList<>(message.getToolCalls().size());
+        for (AssistantMessage.ToolCall call : message.getToolCalls()) {
+            toolCalls.add(new ToolCall(call.id(), call.name(), call.arguments()));
+        }
+        return ChatMessage.assistant(text, toolCalls);
     }
 }
