@@ -2,6 +2,7 @@ package com.dvarahq.oss.evals4j;
 
 import com.dvarahq.oss.evals4j.result.Score;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,10 @@ public sealed interface ScorerOutput {
             Objects.requireNonNull(byKey, "byKey");
             Map<String, List<Single>> copy = new LinkedHashMap<>();
             byKey.forEach((key, values) -> copy.put(key, List.copyOf(values)));
-            byKey = Map.copyOf(copy);
+            // Deliberately not Map.copyOf: that returns an unordered map whose iteration order is
+            // salted per JVM run, which would make the order of the per-key results — and therefore
+            // which one evaluate() returns — differ between runs of the same code.
+            byKey = Collections.unmodifiableMap(copy);
         }
     }
 
