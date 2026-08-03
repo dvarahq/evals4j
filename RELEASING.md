@@ -39,18 +39,41 @@ group ever gains sub-namespaces.
 
 ### 2. Generate a signing key
 
-Central requires every artifact to be signed.
+Central requires every artifact to be signed. One script does the whole thing — generates the key,
+publishes the public half, and stores both secrets:
 
 ```bash
-gpg --gen-key                                   # RSA 4096, no expiry or a long one
-gpg --list-secret-keys --keyid-format=long      # note the key id
+./scripts/setup-signing-key.sh --email opensource@dvarahq.com
+```
+
+It prompts twice for the passphrase: once for gpg, once for `gh`. The script never handles it
+itself, and the private key is piped from gpg into `gh` rather than written to disk.
+
+`--check` verifies prerequisites without creating anything; `--skip-secrets` prints the commands
+instead of running them; `--key-id` reuses a key you already have.
+
+<details>
+<summary>Doing it by hand</summary>
+
+```bash
+gpg --quick-generate-key "Dvara <opensource@dvarahq.com>" rsa4096 sign 3y
+gpg --list-secret-keys --keyid-format=long      # key id follows rsa4096/
 
 # Publish the public key, or Central will reject the deployment.
 gpg --keyserver keyserver.ubuntu.com --send-keys <KEY_ID>
 
-# Export the private key for the secret below.
-gpg --armor --export-secret-keys <KEY_ID>
+# Pipe, so the private key never lands on disk.
+gpg --armor --export-secret-keys <KEY_ID> | gh secret set GPG_PRIVATE_KEY --repo dvarahq/evals4j
+gh secret set GPG_PASSPHRASE --repo dvarahq/evals4j
 ```
+
+Use `--export-secret-keys`, not `--export` — the public key cannot sign. Keyserver propagation takes
+a few minutes; if a publish fails on key lookup, wait and retry rather than regenerating.
+
+</details>
+
+The key expires after three years. Renew it before then, or releases start failing signature
+validation.
 
 ### 3. Add the repository secrets
 
@@ -71,12 +94,11 @@ Or from the command line:
 ```bash
 gh secret set CENTRAL_USERNAME --repo dvarahq/evals4j
 gh secret set CENTRAL_PASSWORD --repo dvarahq/evals4j
-gh secret set GPG_PASSPHRASE   --repo dvarahq/evals4j
-gh secret set GPG_PRIVATE_KEY  --repo dvarahq/evals4j < private-key.asc
 ```
 
-Each prompts for the value without echoing it. Use the file form for the key — it is multi-line, and
-pasting it at a prompt mangles it.
+Each prompts for the value without echoing it. The two GPG secrets are handled by
+`scripts/setup-signing-key.sh` in step 2 — set them there rather than by hand, so the private key is
+piped instead of exported to a file.
 
 > Secrets do **not** survive a repository transfer, and they are not inherited from the org unless
 > defined at org level. Both were empty after the move to `dvarahq`.
@@ -148,9 +170,12 @@ it from the environment too — `MAVEN_GPG_KEY` (its default `keyEnvName`) accep
 private key:
 
 ```bash
-export MAVEN_GPG_KEY="$(cat private-key.asc)"
+export MAVEN_GPG_KEY="$(gpg --armor --export-secret-keys <KEY_ID>)"
 export MAVEN_GPG_PASSPHRASE='...'
 ```
+
+Straight from gpg — no key file to forget about afterwards. `.gitignore` covers the usual key
+extensions anyway, as a backstop.
 
 Prefer the tagged workflow for real releases. Local publishing is for reproducing a CI failure, and
 it is easy to publish from a dirty tree by accident — Central cannot un-publish a version.

@@ -7,3 +7,20 @@ target/
 .vscode/
 .DS_Store
 .flattened-pom.xml
+
+# Key material — never commit any of this.
+# scripts/setup-signing-key.sh pipes the private key straight into GitHub secrets
+# so it never lands on disk, but these patterns catch a manual export or an
+# accidental `gpg --armor --export-secret-keys > key.asc`.
+*.asc
+*.gpg
+*.pgp
+*.key
+*.pem
+*.p12
+*.jks
+secring.*
+pubring.*
+private-key*
+*-private.*
+.gnupg/
