@@ -218,12 +218,16 @@ there is no release commit to forget and no version to keep in sync by hand.
 
 ### Confirm
 
-By default the deployment is **staged, not published** — Central has validated it, but it is not
-live until you press **Publish** at
-[central.sonatype.com/publishing/deployments](https://central.sonatype.com/publishing/deployments).
+A tag push **publishes**. Once Central finishes validating, the version goes live — and a published
+version is permanent: it can never be replaced or withdrawn.
 
-That deliberate pause exists because publishing to Central is permanent: a version can never be
-replaced or withdrawn. To skip it, run the workflow manually with **auto publish** ticked.
+The safety net is therefore the dry run, not a pause after upload. Rehearse before tagging; it builds
+and signs everything without contacting Central.
+
+To stage instead of publishing, run the workflow manually and untick **auto publish**. The deployment
+then waits at
+[central.sonatype.com/publishing/deployments](https://central.sonatype.com/publishing/deployments)
+for a manual **Publish**.
 
 Artifacts appear on `search.maven.org` within a few hours.
 
