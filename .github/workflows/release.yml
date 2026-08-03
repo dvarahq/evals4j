@@ -1,0 +1,146 @@
+name: release
+
+# Publishes the artifacts to Maven Central.
+#
+# Two ways in:
+#   - push a tag, e.g. `git tag v0.1.0 && git push origin v0.1.0`
+#   - run this workflow manually, which also offers a dry run
+#
+# The tag is the source of truth for the version. The POM stays on -SNAPSHOT in git and the
+# release version is set at build time, so there is no release commit to keep in sync.
+#
+# Required repository secrets — see RELEASING.md:
+#   CENTRAL_USERNAME, CENTRAL_PASSWORD   Central Portal user token
+#   GPG_PRIVATE_KEY, GPG_PASSPHRASE      ASCII-armoured signing key and its passphrase
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, without the leading v (e.g. 0.1.0)'
+        required: true
+        type: string
+      dryRun:
+        description: 'Build, sign and bundle, but do not upload'
+        required: false
+        default: true
+        type: boolean
+      autoPublish:
+        description: 'Publish immediately instead of staging for manual release'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    # A fork has neither the signing key nor the Central credentials.
+    if: github.repository == 'grabdoc/evals4j'
+    permissions:
+      contents: write   # to create the GitHub release
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve the version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+
+          # A malformed version would be published permanently, so check before doing anything.
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc)[0-9.]+)?$'; then
+            echo "::error::'$VERSION' is not a release version (expected 1.2.3, optionally -rc1)."
+            exit 1
+          fi
+
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: temurin
+          cache: maven
+          server-id: central
+          server-username: MAVEN_USERNAME
+          server-password: MAVEN_PASSWORD
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+
+      - name: Set the project version
+        run: ./mvnw -B -ntp versions:set -DnewVersion=${{ steps.version.outputs.version }} -DgenerateBackupPoms=false
+
+      # Artifacts are built at release=17 but on JDK 21, matching the build workflow.
+      - name: Build and test
+        run: ./mvnw -B -ntp verify
+
+      # Stops at `verify`, so javadoc, sources and GPG signing all run — that is where a release
+      # usually breaks — but nothing is uploaded and no Central credentials are touched.
+      - name: Dry run — build and sign only
+        if: github.event_name == 'workflow_dispatch' && inputs.dryRun
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          ./mvnw -B -ntp -Prelease verify -DskipTests
+          echo "Signed artifacts:"
+          find . -name '*.asc' -path '*/target/*' | sort
+
+      - name: Publish to Maven Central
+        if: github.event_name == 'push' || !inputs.dryRun
+        env:
+          MAVEN_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          AUTO_PUBLISH=false
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.autoPublish }}" = "true" ]; then
+            AUTO_PUBLISH=true
+          fi
+
+          # Tests already ran in the previous step; re-running them would only add minutes.
+          ./mvnw -B -ntp -Prelease deploy -DskipTests -Dcentral.autoPublish=$AUTO_PUBLISH
+
+      - name: Upload the bundle that was sent to Central
+        if: github.event_name == 'push' || !inputs.dryRun
+        uses: actions/upload-artifact@v4
+        with:
+          name: central-bundle-${{ steps.version.outputs.version }}
+          path: target/central-publishing/central-bundle.zip
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Create the GitHub release
+        # Only for a real tagged release, never for a manual dry run.
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "evals4j ${{ steps.version.outputs.version }}" \
+            --generate-notes \
+            --verify-tag
+
+      - name: Summary
+        run: |
+          {
+            echo "### evals4j ${{ steps.version.outputs.version }}"
+            echo
+            if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dryRun }}" = "true" ]; then
+              echo "Dry run — built, tested and signed. Nothing was uploaded."
+            elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.autoPublish }}" = "true" ]; then
+              echo "Published to Maven Central. It becomes searchable within a few hours."
+            else
+              echo "Staged in the [Central Portal](https://central.sonatype.com/publishing/deployments)."
+              echo "It has passed validation — press **Publish** there to release it."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

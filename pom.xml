@@ -67,6 +67,11 @@
     <maven-javadoc-plugin.version>3.11.2</maven-javadoc-plugin.version>
     <maven-gpg-plugin.version>3.2.7</maven-gpg-plugin.version>
     <central-publishing-plugin.version>0.7.0</central-publishing-plugin.version>
+    <versions-maven-plugin.version>2.18.0</versions-maven-plugin.version>
+    <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
+
+    <!-- Overridden by the release workflow; see RELEASING.md. -->
+    <central.autoPublish>false</central.autoPublish>
   </properties>
 
   <dependencyManagement>
@@ -185,6 +190,16 @@
           <artifactId>maven-javadoc-plugin</artifactId>
           <version>${maven-javadoc-plugin.version}</version>
         </plugin>
+        <plugin>
+          <groupId>org.codehaus.mojo</groupId>
+          <artifactId>versions-maven-plugin</artifactId>
+          <version>${versions-maven-plugin.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar-plugin.version}</version>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
@@ -245,6 +260,17 @@
                 <id>sign-artifacts</id>
                 <phase>verify</phase>
                 <goals><goal>sign</goal></goals>
+                <configuration>
+                  <!--
+                    CI has no TTY, so gpg must take the passphrase over the loopback pinentry
+                    rather than prompting. Without this the signing step hangs until the job
+                    times out.
+                  -->
+                  <gpgArguments>
+                    <arg>--pinentry-mode</arg>
+                    <arg>loopback</arg>
+                  </gpgArguments>
+                </configuration>
               </execution>
             </executions>
           </plugin>
@@ -255,7 +281,24 @@
             <extensions>true</extensions>
             <configuration>
               <publishingServerId>central</publishingServerId>
-              <autoPublish>false</autoPublish>
+              <deploymentName>evals4j ${project.version}</deploymentName>
+              <!--
+                The examples are built but never published. Setting maven.deploy.skip or
+                skipPublishing on that module is not enough — the plugin collects artifacts at the
+                session level and still bundles it. Verified by inspecting the bundle contents.
+              -->
+              <excludeArtifacts>
+                <artifact>evals4j-examples</artifact>
+              </excludeArtifacts>
+              <!--
+                Defaults to staging the deployment for a manual "Publish" in the Central Portal,
+                because a publish to Central is permanent. The release workflow passes
+                -DautoPublish=true when you deliberately opt in.
+              -->
+              <autoPublish>${central.autoPublish}</autoPublish>
+              <!-- Fail the build if Central rejects the bundle, rather than going green on an
+                   upload that is later refused. -->
+              <waitUntil>VALIDATED</waitUntil>
             </configuration>
           </plugin>
         </plugins>

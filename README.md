@@ -369,6 +369,9 @@ OPENAI_API_KEY=... ./mvnw -Pit verify   # plus end-to-end tests against a real m
 Sandbox tests requiring Docker skip themselves when no daemon is reachable. The examples are
 compiled on every build, so an API change that breaks them breaks CI.
 
+Publishing to Maven Central is handled by the [`release` workflow](.github/workflows/release.yml) —
+see [RELEASING.md](RELEASING.md).
+
 ---
 
 ## Differences from OpenEvals
