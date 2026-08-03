@@ -78,7 +78,7 @@
     <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
 
     <!-- Overridden by the release workflow. -->
-    <central.autoPublish>false</central.autoPublish>
+    <central.autoPublish>true</central.autoPublish>
   </properties>
 
   <dependencyManagement>
@@ -298,9 +298,10 @@
                 <artifact>evals4j-examples</artifact>
               </excludeArtifacts>
               <!--
-                Defaults to staging the deployment for a manual "Publish" in the Central Portal,
-                because a publish to Central is permanent. The release workflow passes
-                -DautoPublish=true when you deliberately opt in.
+                Publishes as soon as Central validates the bundle. A published version is
+                permanent — it can never be replaced or withdrawn — so the safety net is the
+                dry run, which builds and signs everything without uploading. Set
+                -Dcentral.autoPublish=false to stage for a manual Publish instead.
               -->
               <autoPublish>${central.autoPublish}</autoPublish>
               <!-- Fail the build if Central rejects the bundle, rather than going green on an

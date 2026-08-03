@@ -29,9 +29,9 @@ on:
         default: true
         type: boolean
       autoPublish:
-        description: 'Publish immediately instead of staging for manual release'
+        description: 'Publish immediately. Untick to stage for a manual Publish instead.'
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -138,9 +138,11 @@ jobs:
           MAVEN_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
         run: |
-          AUTO_PUBLISH=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.autoPublish }}" = "true" ]; then
-            AUTO_PUBLISH=true
+          # Tag pushes publish. A manual dispatch can still stage instead by
+          # unticking autoPublish.
+          AUTO_PUBLISH=true
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.autoPublish }}" != "true" ]; then
+            AUTO_PUBLISH=false
           fi
 
           # Tests already ran in the previous step; re-running them would only add minutes.
