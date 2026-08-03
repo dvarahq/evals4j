@@ -41,7 +41,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
     <dependency>
       <groupId>com.dvarahq.oss</groupId>
       <artifactId>evals4j-bom</artifactId>
-      <version>0.1.0</version>
+      <version>0.2.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -89,6 +89,18 @@ JudgeModel judge = SpringAiJudgeModel.of(chatModel);
 
 // LangChain4j
 JudgeModel judge = LangChain4jJudgeModel.of(chatModel);
+```
+
+### Scoring a real agent run
+
+To judge the path an agent actually took, convert its conversation and hand it to a trajectory
+evaluator. Tool calls keep their ids, names and arguments, which is what the matchers compare on.
+
+```java
+List<ChatMessage> trajectory = SpringAiMessages.fromSpringAi(messages);
+// or LangChain4jMessages.fromLangChain4j(chatMemory.messages());
+
+evaluator.evaluate(EvalRequest.of(null, trajectory, referenceTrajectory));
 ```
 
 ---
@@ -328,7 +340,31 @@ Failure messages carry the judge's reasoning, because "expected true but was fal
 nothing about an LLM score.
 
 `EvalReport` implements `EvalTracer`; register it on your evaluators and write a summary at the end
-of the run — the trend across runs is what matters, not one pass or fail.
+of the run — the trend across runs is what matters, not one pass or fail. There is no JUnit
+extension doing this for you yet, so register it and call `writeMarkdown` in `@AfterAll` yourself.
+
+---
+
+## Running evaluations concurrently
+
+`evaluateAsync` composes over the model's own asynchronous call rather than parking a blocking one on
+a thread, and `MultiturnSimulation.runAsync` scores its trajectory evaluators together. Judge calls
+are network calls, so give them a pool sized for waiting rather than the common pool:
+
+```java
+ExecutorService pool = Executors.newFixedThreadPool(16);
+List<CompletableFuture<EvaluatorResult>> scores = cases.stream()
+        .map(c -> judge.evaluateAsync(EvalRequest.of(c.question(), c.answer()), pool))
+        .toList();
+```
+
+The JSON-match evaluator judges each rubric key concurrently on this path, instead of one after
+another.
+
+In production, an application with a Micrometer `MeterRegistry` gets a `MicrometerEvalTracer`
+automatically from the starter, publishing `evals4j.evaluation.score` and
+`evals4j.evaluation.duration` tagged by evaluator and feedback key. Boolean scores record as 0 or 1,
+so the mean is the pass rate.
 
 ---
 

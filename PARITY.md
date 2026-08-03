@@ -64,8 +64,8 @@ differently depending on which API you call. evals4j has one implementation and 
 |---|---|---|
 | pyright / mypy evaluators | `JavacEvaluator` (JDK Compiler API, in-process) | The JVM analogue of "type-check the generated code", with nothing to install. `CliCheckEvaluator` keeps the shell-out shape for any other language. |
 | E2B cloud sandbox | `SandboxRunner` SPI, Docker and local implementations | E2B has no Java SDK. Docker is the portable equivalent. |
-| LangSmith run-tree metadata | `EvalTracer` SPI, slf4j implementation | No LangSmith Java SDK exists. **This is the one upstream capability not reproduced** — see below. |
-| pytest / vitest plugin | `evals4j-junit5` | Same role, JVM-native. |
+| LangSmith run-tree metadata | `EvalTracer` SPI, with slf4j and Micrometer implementations | No LangSmith Java SDK exists. **This is the one upstream capability not reproduced** — see below. |
+| pytest / vitest plugin | `evals4j-junit5` | Assertions plus `EvalReport`, which you register as a tracer and write out yourself. There is no JUnit `Extension` doing it automatically — that is planned, not shipped. |
 | separate `*_async` twin per evaluator | `evaluate` + `evaluateAsync` on one type | Java does not need duplicated call sites. |
 | `code_extraction` via two bound tools | one structured-output schema with a `has_code` flag | Expresses the same choice through the single `JudgeModel` SPI, so it works with every adapter rather than only those exposing tool binding. |
 | judge configured with a model-id string | a `JudgeModel` from an adapter | There is no `init_chat_model` in Java; the framework supplies the model. |
@@ -84,13 +84,22 @@ matching Python's `KeyError`.
 **LangSmith export.** OpenEvals stamps `__ls_framework`, `__ls_evaluator` and `__ls_language` onto
 the LangSmith run tree and logs feedback through the pytest plugin. There is no LangSmith Java SDK,
 and an untested hand-rolled REST client would be worse than none. The `EvalTracer` SPI is the seam
-where such an implementation would go; `Slf4jEvalTracer` ships today, and the Spring Boot starter
-registers a tracer automatically.
+where such an implementation would go; `Slf4jEvalTracer` and `MicrometerEvalTracer` ship today, and
+the Spring Boot starter registers one automatically — Micrometer when the application has a
+`MeterRegistry`, slf4j otherwise. A tracer that returns a run id from `onStart` has it recorded as
+each result's `sourceRunId`, which is the hook an export implementation would use.
 
 **Streaming judges.** Neither upstream nor evals4j streams judge output; scores are read from a
 complete structured response.
 
 ## Version
 
-Ported from OpenEvals `0.2.0` (commit `43fd6af`). Upstream changes after that commit are not
-reflected; the prompt checksum test is what will notice if the catalog diverges.
+Ported from OpenEvals `0.2.0` (commit `43fd6af`). **That version number is upstream's, not
+evals4j's** — the two happen to share it, which is easy to misread in release notes.
+
+`43fd6af` was still the tip of upstream `main` when evals4j 0.2.0 was prepared: the commits after the
+`openevals==0.2.0` tag are dependency bumps and lockfile syncs, touching only `js/package.json`,
+`js/yarn.lock`, `python/pyproject.toml` and `python/uv.lock`. There is no port work outstanding. To
+re-check, look at whether
+[the comparison](https://github.com/langchain-ai/openevals/compare/openevals==0.2.0...main) still
+lists only those four files; the prompt checksum test is what will notice if the catalog diverges.
