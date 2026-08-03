@@ -28,5 +28,12 @@
       <artifactId>junit-jupiter-api</artifactId>
       <scope>compile</scope>
     </dependency>
+    <!-- Drives EvalReportExtension through the real Jupiter engine. An extension's callbacks only
+         fire in a real run, so testing it any other way would test the mock, not the extension. -->
+    <dependency>
+      <groupId>org.junit.platform</groupId>
+      <artifactId>junit-platform-testkit</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>

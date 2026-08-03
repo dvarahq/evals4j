@@ -5,14 +5,18 @@ in [PARITY.md](PARITY.md).
 
 ## 0.3.0 — unreleased
 
-Nothing yet. `main` builds as `0.3.0-SNAPSHOT`; the version on Maven Central is
+In progress. `main` builds as `0.3.0-SNAPSHOT`; the version on Maven Central is
 [0.2.0](#020--2026-08-03).
 
-### Planned
+### Added
 
-- A JUnit 5 `Extension` that registers `EvalReport` and writes it out, so a suite does not have to
-  wire the tracer and call `writeMarkdown` in `@AfterAll` by hand. This is the one thing 0.2.0
-  promised for 0.3.0; see the note under its Documentation heading.
+- `EvalReportExtension`, the JUnit 5 extension 0.2.0 promised. Register it with `@ExtendWith`, take
+  an `EvalReport` as a test parameter, and the report is created, shared across every class in the
+  run and written out — no `@AfterAll` calling `writeMarkdown` by hand. The file defaults to
+  `target/evals4j-report.md` and moves with the `evals4j.report` system property.
+
+  Wiring a tracer into an evaluator stays explicit (`.tracer(report)`): an evaluator takes its tracer
+  at construction, and a global default one would be shared mutable state across every module.
 
 ## 0.2.0 — 2026-08-03
 
