@@ -1,7 +1,9 @@
 package com.dvarahq.oss.evals4j.trajectory;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.dvarahq.oss.evals4j.EvalRequest;
 import com.dvarahq.oss.evals4j.Evaluator;
+import com.dvarahq.oss.evals4j.internal.Json;
 import com.dvarahq.oss.evals4j.judge.LlmAsJudge;
 import com.dvarahq.oss.evals4j.message.MessageRenderer;
 import com.dvarahq.oss.evals4j.message.Messages;
@@ -13,6 +15,8 @@ import com.dvarahq.oss.evals4j.spi.JudgeModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Judges a trajectory with an LLM rather than by matching against a reference.
@@ -42,6 +46,29 @@ public final class TrajectoryLlmAsJudge implements Evaluator {
         return delegate.evaluateAll(renderTrajectories(request));
     }
 
+    @Override
+    public CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(EvalRequest request) {
+        // Rendering is local work, so only the judge call needs to be asynchronous.
+        return delegate.evaluateAllAsync(renderTrajectories(request));
+    }
+
+    /** The key the score is recorded under. */
+    public String feedbackKey() {
+        return delegate.feedbackKey();
+    }
+
+    public String runName() {
+        return delegate.runName();
+    }
+
+    /**
+     * The judge's raw response, for use with a custom {@link Builder#outputSchema}. The trajectories
+     * are rendered first, exactly as they are for {@link #evaluateAll}.
+     */
+    public JsonNode evaluateRaw(EvalRequest request) {
+        return delegate.evaluateRaw(renderTrajectories(request));
+    }
+
     /**
      * Renders the message lists to text before the judge sees them.
      *
@@ -67,6 +94,8 @@ public final class TrajectoryLlmAsJudge implements Evaluator {
         private List<Double> choices;
         private boolean useReasoning = true;
         private final List<FewShotExample> fewShotExamples = new ArrayList<>();
+        private String system;
+        private JsonNode outputSchema;
         private EvalTracer tracer;
 
         /**
@@ -103,6 +132,12 @@ public final class TrajectoryLlmAsJudge implements Evaluator {
             return this;
         }
 
+        /** Restrict the score to these values. Takes precedence over {@link #continuous}. */
+        public Builder choices(List<Double> choices) {
+            this.choices = choices;
+            return this;
+        }
+
         public Builder useReasoning(boolean useReasoning) {
             this.useReasoning = useReasoning;
             return this;
@@ -110,6 +145,34 @@ public final class TrajectoryLlmAsJudge implements Evaluator {
 
         public Builder fewShotExample(FewShotExample example) {
             this.fewShotExamples.add(example);
+            return this;
+        }
+
+        public Builder fewShotExamples(List<FewShotExample> examples) {
+            if (examples != null) {
+                this.fewShotExamples.addAll(examples);
+            }
+            return this;
+        }
+
+        /** A system message prepended to the prompt. */
+        public Builder system(String system) {
+            this.system = system;
+            return this;
+        }
+
+        /**
+         * Replaces the generated score schema with your own. The result is then only reachable via
+         * {@link TrajectoryLlmAsJudge#evaluateRaw}, unless your schema also declares a {@code score}
+         * property.
+         */
+        public Builder outputSchema(JsonNode schema) {
+            this.outputSchema = schema;
+            return this;
+        }
+
+        public Builder outputSchema(Map<String, Object> schema) {
+            this.outputSchema = Json.toNode(schema);
             return this;
         }
 
@@ -123,9 +186,11 @@ public final class TrajectoryLlmAsJudge implements Evaluator {
                     .prompt(prompt)
                     .feedbackKey(feedbackKey)
                     .model(model)
+                    .system(system)
                     .continuous(continuous)
                     .useReasoning(useReasoning)
                     .fewShotExamples(fewShotExamples)
+                    .outputSchema(outputSchema)
                     .tracer(tracer);
             if (choices != null) {
                 judge.choices(choices);

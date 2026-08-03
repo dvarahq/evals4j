@@ -1,8 +1,10 @@
 package com.dvarahq.oss.evals4j.code;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.dvarahq.oss.evals4j.EvalRequest;
 import com.dvarahq.oss.evals4j.Evaluator;
 import com.dvarahq.oss.evals4j.ScorerRunner;
+import com.dvarahq.oss.evals4j.internal.Json;
 import com.dvarahq.oss.evals4j.judge.LlmAsJudge;
 import com.dvarahq.oss.evals4j.prompt.FewShotExample;
 import com.dvarahq.oss.evals4j.prompt.Prompts;
@@ -12,6 +14,8 @@ import com.dvarahq.oss.evals4j.spi.JudgeModel;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -42,6 +46,7 @@ public final class CodeLlmAsJudge implements Evaluator {
                 .continuous(builder.continuous)
                 .useReasoning(builder.useReasoning)
                 .fewShotExamples(builder.fewShotExamples)
+                .outputSchema(builder.outputSchema)
                 .tracer(builder.tracer);
         if (builder.choices != null) {
             judgeBuilder.choices(builder.choices);
@@ -70,6 +75,39 @@ public final class CodeLlmAsJudge implements Evaluator {
         return judge.evaluateAll(request.toBuilder().outputs(code).build());
     }
 
+    @Override
+    public CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(EvalRequest request) {
+        // Extraction is a model call under the LLM strategy, so it must not run on the caller's
+        // thread either — hence the supplyAsync rather than extracting up front.
+        return CompletableFuture.supplyAsync(() -> extractor.extract(request.outputs()))
+                .thenCompose(code -> code == null
+                        ? CompletableFuture.completedFuture(
+                                ScorerRunner.toResults(feedbackKey, CodeEvaluator.extractionFailed()))
+                        : judge.evaluateAllAsync(request.toBuilder().outputs(code).build()));
+    }
+
+    /** The key the score is recorded under. */
+    public String feedbackKey() {
+        return feedbackKey;
+    }
+
+    /**
+     * The judge's raw response for the extracted code, for use with a custom
+     * {@link Builder#outputSchema}.
+     *
+     * @throws IllegalArgumentException when no code could be extracted — unlike {@link #evaluateAll},
+     *     there is no score to record the failure on
+     */
+    public JsonNode evaluateRaw(EvalRequest request) {
+        String code = extractor.extract(request.outputs());
+        if (code == null) {
+            throw new IllegalArgumentException(
+                    "No code could be extracted from the outputs, so there is nothing to judge. "
+                            + "Use evaluateAll(request) to get a failing result instead.");
+        }
+        return judge.evaluateRaw(request.toBuilder().outputs(code).build());
+    }
+
     /** Builder for {@link CodeLlmAsJudge}. */
     public static final class Builder {
         private String prompt = Prompts.CODE_CORRECTNESS_PROMPT;
@@ -83,6 +121,7 @@ public final class CodeLlmAsJudge implements Evaluator {
         private CodeExtractionStrategy strategy = CodeExtractionStrategy.NONE;
         private Function<Object, String> customExtractor;
         private JudgeModel extractionModel;
+        private JsonNode outputSchema;
         private EvalTracer tracer;
 
         /**
@@ -124,6 +163,12 @@ public final class CodeLlmAsJudge implements Evaluator {
             return this;
         }
 
+        /** Restrict the score to these values. Takes precedence over {@link #continuous}. */
+        public Builder choices(List<Double> choices) {
+            this.choices = choices;
+            return this;
+        }
+
         public Builder useReasoning(boolean useReasoning) {
             this.useReasoning = useReasoning;
             return this;
@@ -131,6 +176,28 @@ public final class CodeLlmAsJudge implements Evaluator {
 
         public Builder fewShotExample(FewShotExample example) {
             this.fewShotExamples.add(example);
+            return this;
+        }
+
+        public Builder fewShotExamples(List<FewShotExample> examples) {
+            if (examples != null) {
+                this.fewShotExamples.addAll(examples);
+            }
+            return this;
+        }
+
+        /**
+         * Replaces the generated score schema with your own. The result is then only reachable via
+         * {@link CodeLlmAsJudge#evaluateRaw}, unless your schema also declares a {@code score}
+         * property.
+         */
+        public Builder outputSchema(JsonNode schema) {
+            this.outputSchema = schema;
+            return this;
+        }
+
+        public Builder outputSchema(Map<String, Object> schema) {
+            this.outputSchema = Json.toNode(schema);
             return this;
         }
 

@@ -71,6 +71,8 @@ public final class ExecutionEvaluator implements Evaluator {
         private SandboxRunner sandbox;
         private String fileName = "outputs.py";
         private List<String> command = List.of("python", "outputs.py");
+        private boolean fileNameSet;
+        private boolean commandSet;
         private Map<String, String> environment = Map.of();
         private Duration timeout = Duration.ofMinutes(2);
         private CodeExtractionStrategy strategy = CodeExtractionStrategy.NONE;
@@ -83,15 +85,22 @@ public final class ExecutionEvaluator implements Evaluator {
             return this;
         }
 
-        /** The file the extracted code is written to inside the sandbox. */
+        /**
+         * The file the extracted code is written to inside the sandbox.
+         *
+         * <p>Setting this obliges you to set {@link #command} too — the default command names the
+         * default file, and changing one without the other would run a file that does not exist.
+         */
         public Builder fileName(String fileName) {
             this.fileName = fileName;
+            this.fileNameSet = true;
             return this;
         }
 
         /** The command to run, e.g. {@code "node", "outputs.js"}. */
         public Builder command(String... command) {
             this.command = List.of(command);
+            this.commandSet = true;
             return this;
         }
 
@@ -126,6 +135,14 @@ public final class ExecutionEvaluator implements Evaluator {
         }
 
         public ExecutionEvaluator build() {
+            // Catching this here beats a "file not found" from inside a container, which is a
+            // confusing way to learn that the two settings disagree.
+            if (fileNameSet != commandSet) {
+                throw new IllegalArgumentException(
+                        "fileName and command must be set together: the defaults are \"outputs.py\" and "
+                                + "[python, outputs.py], so changing one alone runs the wrong file. "
+                                + "Set both, or neither.");
+            }
             return new ExecutionEvaluator(this);
         }
     }

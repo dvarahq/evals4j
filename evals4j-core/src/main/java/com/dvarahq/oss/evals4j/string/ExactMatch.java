@@ -3,8 +3,10 @@ package com.dvarahq.oss.evals4j.string;
 import com.dvarahq.oss.evals4j.EvalRequest;
 import com.dvarahq.oss.evals4j.Evaluator;
 import com.dvarahq.oss.evals4j.ScorerOutput;
+import com.dvarahq.oss.evals4j.ScorerRunner;
 import com.dvarahq.oss.evals4j.internal.Json;
 import com.dvarahq.oss.evals4j.result.EvaluatorResult;
+import com.dvarahq.oss.evals4j.spi.EvalTracer;
 
 import java.util.List;
 
@@ -19,18 +21,31 @@ public final class ExactMatch implements Evaluator {
 
     public static final String FEEDBACK_KEY = "exact_match";
 
-    private static final ExactMatch INSTANCE = new ExactMatch();
+    private static final ExactMatch INSTANCE = new ExactMatch(EvalTracer.NO_OP);
 
-    private ExactMatch() {}
+    private final EvalTracer tracer;
+
+    private ExactMatch(EvalTracer tracer) {
+        this.tracer = tracer == null ? EvalTracer.NO_OP : tracer;
+    }
 
     public static ExactMatch create() {
         return INSTANCE;
     }
 
+    /**
+     * A copy that reports to {@code tracer}.
+     *
+     * <p>A wither rather than a builder because the shared instance is stateless and worth keeping:
+     * this is the evaluator most likely to be called in a tight loop.
+     */
+    public ExactMatch withTracer(EvalTracer tracer) {
+        return new ExactMatch(tracer);
+    }
+
     @Override
     public List<EvaluatorResult> evaluateAll(EvalRequest request) {
-        return com.dvarahq.oss.evals4j.ScorerRunner.run(
-                FEEDBACK_KEY, FEEDBACK_KEY, ExactMatch::score, request, null);
+        return ScorerRunner.run(FEEDBACK_KEY, FEEDBACK_KEY, ExactMatch::score, request, tracer);
     }
 
     private static ScorerOutput score(EvalRequest request) {

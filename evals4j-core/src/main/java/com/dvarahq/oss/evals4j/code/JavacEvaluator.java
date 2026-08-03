@@ -200,8 +200,23 @@ public final class JavacEvaluator implements Evaluator {
             return this;
         }
 
-        /** Extra javac options, e.g. {@code --release 17} or a {@code -classpath}. */
+        /**
+         * Extra javac options, e.g. {@code --release 17} or a {@code -classpath}. Appended to the
+         * defaults {@code -Xlint:none -nowarn}; use {@link #replaceCompilerOptions} to drop those.
+         */
         public Builder compilerOptions(String... options) {
+            this.compilerOptions.addAll(List.of(options));
+            return this;
+        }
+
+        /**
+         * Replaces the option list outright, defaults included.
+         *
+         * <p>The defaults silence warnings, which is right for judging whether generated code
+         * compiles but wrong if you want the warnings themselves — and appending cannot undo them.
+         */
+        public Builder replaceCompilerOptions(String... options) {
+            this.compilerOptions.clear();
             this.compilerOptions.addAll(List.of(options));
             return this;
         }

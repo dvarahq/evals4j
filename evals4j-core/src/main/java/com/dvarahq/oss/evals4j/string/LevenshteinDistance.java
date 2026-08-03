@@ -6,6 +6,7 @@ import com.dvarahq.oss.evals4j.ScorerOutput;
 import com.dvarahq.oss.evals4j.ScorerRunner;
 import com.dvarahq.oss.evals4j.internal.Json;
 import com.dvarahq.oss.evals4j.result.EvaluatorResult;
+import com.dvarahq.oss.evals4j.spi.EvalTracer;
 
 import java.util.List;
 
@@ -20,17 +21,27 @@ public final class LevenshteinDistance implements Evaluator {
 
     public static final String FEEDBACK_KEY = "levenshtein_distance";
 
-    private static final LevenshteinDistance INSTANCE = new LevenshteinDistance();
+    private static final LevenshteinDistance INSTANCE = new LevenshteinDistance(EvalTracer.NO_OP);
 
-    private LevenshteinDistance() {}
+    private final EvalTracer tracer;
+
+    private LevenshteinDistance(EvalTracer tracer) {
+        this.tracer = tracer == null ? EvalTracer.NO_OP : tracer;
+    }
 
     public static LevenshteinDistance create() {
         return INSTANCE;
     }
 
+    /** A copy that reports to {@code tracer}. */
+    public LevenshteinDistance withTracer(EvalTracer tracer) {
+        return new LevenshteinDistance(tracer);
+    }
+
     @Override
     public List<EvaluatorResult> evaluateAll(EvalRequest request) {
-        return ScorerRunner.run(FEEDBACK_KEY, FEEDBACK_KEY, LevenshteinDistance::score, request, null);
+        return ScorerRunner.run(
+                FEEDBACK_KEY, FEEDBACK_KEY, LevenshteinDistance::score, request, tracer);
     }
 
     private static ScorerOutput score(EvalRequest request) {
