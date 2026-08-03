@@ -17,6 +17,12 @@
   <properties>
     <maven.deploy.skip>true</maven.deploy.skip>
     <maven.install.skip>true</maven.install.skip>
+    <!--
+      central-publishing-maven-plugin runs as a build extension and replaces the deploy
+      participant, so it does not honour maven.deploy.skip. Without this the examples would be
+      bundled into the Maven Central deployment — and a publish to Central cannot be undone.
+    -->
+    <skipPublishing>true</skipPublishing>
   </properties>
 
   <dependencies>
