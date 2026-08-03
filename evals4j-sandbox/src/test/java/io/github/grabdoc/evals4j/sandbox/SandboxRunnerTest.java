@@ -16,6 +16,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SandboxRunnerTest {
 
+    private static final String IMAGE = "alpine:3.20";
+
     /** A shell is present on every platform this project supports, so no interpreter is needed. */
     private static SandboxRunner.Request shellScript(String script, Duration timeout) {
         return new SandboxRunner.Request(
@@ -81,21 +83,32 @@ class SandboxRunnerTest {
     @EnabledIf("io.github.grabdoc.evals4j.sandbox.DockerSandboxRunner#isDockerAvailable")
     void dockerRunnerExecutesInAContainer() {
         SandboxRunner.Result result = DockerSandboxRunner.builder()
-                .image("alpine:3.20")
+                .image(IMAGE)
                 .build()
                 .run(shellScript("echo from-the-container", Duration.ofMinutes(2)));
 
-        assertThat(result.succeeded()).isTrue();
+        // Report what Docker actually said; "expected true but was false" is useless here.
+        assertThat(result.succeeded())
+                .as("docker run failed (exit %d)%nstdout: %s%nstderr: %s",
+                        result.exitCode(), result.stdout(), result.stderr())
+                .isTrue();
         assertThat(result.stdout()).contains("from-the-container");
     }
 
     @Test
     @EnabledIf("io.github.grabdoc.evals4j.sandbox.DockerSandboxRunner#isDockerAvailable")
     void dockerRunnerBlocksNetworkAccessByDefault() {
-        SandboxRunner.Result result = DockerSandboxRunner.builder()
-                .image("alpine:3.20")
-                .build()
-                .run(shellScript("wget -q -T 3 -O - https://example.com", Duration.ofMinutes(2)));
+        DockerSandboxRunner runner = DockerSandboxRunner.builder().image(IMAGE).build();
+
+        // Establish that the runner works at all first, otherwise "the network call failed" would
+        // also pass when Docker itself is broken.
+        SandboxRunner.Result control = runner.run(shellScript("echo ok", Duration.ofMinutes(2)));
+        assertThat(control.succeeded())
+                .as("control run failed: %s", control.diagnostics())
+                .isTrue();
+
+        SandboxRunner.Result result =
+                runner.run(shellScript("wget -q -T 3 -O - https://example.com", Duration.ofMinutes(2)));
 
         assertThat(result.succeeded()).isFalse();
     }
