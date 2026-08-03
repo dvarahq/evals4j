@@ -14,6 +14,10 @@
   <name>evals4j :: spring-boot-starter</name>
   <description>Auto-configuration binding evals4j to whichever chat model is on the classpath</description>
 
+  <properties>
+    <automatic.module.name>com.dvarahq.oss.evals4j.autoconfigure</automatic.module.name>
+  </properties>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -46,9 +50,11 @@
       <artifactId>evals4j-langchain4j</artifactId>
       <optional>true</optional>
     </dependency>
+    <!-- Backs MicrometerEvalTracer. micrometer-core carries MeterRegistry; micrometer-observation
+         alone does not, and recording a score is a metric rather than an observation. -->
     <dependency>
       <groupId>io.micrometer</groupId>
-      <artifactId>micrometer-observation</artifactId>
+      <artifactId>micrometer-core</artifactId>
       <optional>true</optional>
     </dependency>
 
