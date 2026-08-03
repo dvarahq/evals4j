@@ -1,5 +1,10 @@
 # evals4j
 
+[![build](https://github.com/grabdoc/evals4j/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/grabdoc/evals4j/actions/workflows/build.yml)
+[![maven central](https://img.shields.io/maven-central/v/com.dvarahq.oss/evals4j-core?label=maven%20central)](https://central.sonatype.com/artifact/com.dvarahq.oss/evals4j-core)
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![java](https://img.shields.io/badge/java-17%2B-orange.svg)](#install)
+
 Open-source evaluators for LLM applications on the JVM, for **Spring AI** and **LangChain4j**.
 
 A Java port of LangChain's [OpenEvals](https://github.com/langchain-ai/openevals) — the same
@@ -28,6 +33,14 @@ result.comment();  // "The response includes an unnecessary pleasantry ... Thus,
 
 ## Install
 
+> **Not yet released.** Nothing has been published under `com.dvarahq.oss` yet, so the Maven Central
+> badge above reads *not found* and the coordinates below will not resolve. Until the first release,
+> build from source:
+>
+> ```bash
+> git clone https://github.com/grabdoc/evals4j.git && cd evals4j && ./mvnw install
+> ```
+
 Requires **Java 17+**. Add the BOM, then whichever modules you need.
 
 ```xml
@@ -36,7 +49,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
     <dependency>
       <groupId>com.dvarahq.oss</groupId>
       <artifactId>evals4j-bom</artifactId>
-      <version>0.1.0-SNAPSHOT</version>
+      <version>0.1.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
