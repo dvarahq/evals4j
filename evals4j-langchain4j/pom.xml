@@ -14,6 +14,10 @@
   <name>evals4j :: langchain4j</name>
   <description>LangChain4j adapter — drives evals4j evaluators with a LangChain4j ChatModel</description>
 
+  <properties>
+    <automatic.module.name>com.dvarahq.oss.evals4j.langchain4j</automatic.module.name>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.dvarahq.oss</groupId>

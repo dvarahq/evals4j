@@ -14,6 +14,10 @@
   <name>evals4j :: sandbox</name>
   <description>SandboxRunner implementations — Docker (isolated) and local process (not a security boundary)</description>
 
+  <properties>
+    <automatic.module.name>com.dvarahq.oss.evals4j.sandbox</automatic.module.name>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.dvarahq.oss</groupId>

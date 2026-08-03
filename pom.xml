@@ -77,6 +77,9 @@
     <versions-maven-plugin.version>2.18.0</versions-maven-plugin.version>
     <maven-jar-plugin.version>3.5.0</maven-jar-plugin.version>
 
+    <!-- Overridden per module; the root value is only a fallback. -->
+    <automatic.module.name>com.dvarahq.oss.evals4j</automatic.module.name>
+
     <!-- Overridden by the release workflow. -->
     <central.autoPublish>true</central.autoPublish>
   </properties>
@@ -148,6 +151,11 @@
         <artifactId>evals4j-junit5</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.dvarahq.oss</groupId>
+        <artifactId>evals4j-spring-boot-starter</artifactId>
+        <version>${project.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -206,6 +214,16 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
           <version>${maven-jar-plugin.version}</version>
+          <configuration>
+            <archive>
+              <manifestEntries>
+                <!-- Claims a stable module name for JPMS users before anyone derives one from the
+                     jar file name, which would then be ours to keep. Each module overrides the
+                     property; see automatic.module.name in its POM. -->
+                <Automatic-Module-Name>${automatic.module.name}</Automatic-Module-Name>
+              </manifestEntries>
+            </archive>
+          </configuration>
         </plugin>
       </plugins>
     </pluginManagement>

@@ -18,6 +18,13 @@
     <maven.deploy.skip>true</maven.deploy.skip>
     <maven.install.skip>true</maven.install.skip>
     <!--
+      No javadoc jar for a module nobody consumes. It also cannot be built: the evals4j jars declare
+      an Automatic-Module-Name, so javadoc treats them as modules, and these examples have no
+      module-info to read them from — javadoc then reports every evals4j package as missing. The
+      published modules are unaffected; they are the ones whose javadoc matters.
+    -->
+    <maven.javadoc.skip>true</maven.javadoc.skip>
+    <!--
       Do NOT set skipPublishing here. It is not per-module: the publishing plugin performs the
       whole upload during the last reactor module's deploy phase, and this module is last — so
       setting it silently skipped the entire deployment while the build still went green.

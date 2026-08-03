@@ -24,6 +24,14 @@
         <artifactId>evals4j-core</artifactId>
         <version>${project.version}</version>
       </dependency>
+      <!-- Carries FakeJudgeModel, so consumers can unit-test their own evaluators offline.
+           Managed here too, otherwise importing the BOM still leaves this one version to pin. -->
+      <dependency>
+        <groupId>com.dvarahq.oss</groupId>
+        <artifactId>evals4j-core</artifactId>
+        <version>${project.version}</version>
+        <classifier>tests</classifier>
+      </dependency>
       <dependency>
         <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-springai</artifactId>

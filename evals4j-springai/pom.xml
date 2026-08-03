@@ -14,6 +14,10 @@
   <name>evals4j :: spring-ai</name>
   <description>Spring AI adapter — drives evals4j evaluators with a Spring AI ChatModel</description>
 
+  <properties>
+    <automatic.module.name>com.dvarahq.oss.evals4j.springai</automatic.module.name>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>com.dvarahq.oss</groupId>

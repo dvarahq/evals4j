@@ -12,7 +12,11 @@
 
   <artifactId>evals4j-junit5</artifactId>
   <name>evals4j :: junit5</name>
-  <description>JUnit 5 assertions and a report extension for eval suites</description>
+  <description>JUnit 5 assertions and a run report for eval suites</description>
+
+  <properties>
+    <automatic.module.name>com.dvarahq.oss.evals4j.junit5</automatic.module.name>
+  </properties>
 
   <dependencies>
     <dependency>
