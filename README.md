@@ -53,6 +53,10 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
 | `evals4j-sandbox` | Docker and local sandbox runners, for evaluating generated code |
 | `evals4j-junit5` | assertions and a report for eval suites |
 
+Runnable examples live in [`evals4j-examples`](evals4j-examples) — start with
+[`AgentTrajectoryExample`](evals4j-examples/src/main/java/io/github/grabdoc/evals4j/examples/AgentTrajectoryExample.java),
+which needs no API key.
+
 ### Spring Boot
 
 Add the starter and you are done — an existing `ChatModel` bean is enough.
@@ -362,7 +366,8 @@ a fenced or chatty reply still parses.
 OPENAI_API_KEY=... ./mvnw -Pit verify   # plus end-to-end tests against a real model
 ```
 
-Sandbox tests requiring Docker skip themselves when no daemon is reachable.
+Sandbox tests requiring Docker skip themselves when no daemon is reachable. The examples are
+compiled on every build, so an API change that breaks them breaks CI.
 
 ---
 

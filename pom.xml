@@ -43,6 +43,7 @@
     <module>evals4j-sandbox</module>
     <module>evals4j-junit5</module>
     <module>evals4j-spring-boot-starter</module>
+    <module>evals4j-examples</module>
   </modules>
 
   <properties>
