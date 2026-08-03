@@ -41,7 +41,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     # A fork has neither the signing key nor the Central credentials.
-    if: github.repository == 'grabdoc/evals4j'
+    if: github.repository == 'dvarahq/evals4j'
     permissions:
       contents: write   # to create the GitHub release
     steps:

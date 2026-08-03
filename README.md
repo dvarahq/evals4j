@@ -1,6 +1,6 @@
 # evals4j
 
-[![build](https://github.com/grabdoc/evals4j/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/grabdoc/evals4j/actions/workflows/build.yml)
+[![build](https://github.com/dvarahq/evals4j/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/dvarahq/evals4j/actions/workflows/build.yml)
 [![maven central](https://img.shields.io/maven-central/v/com.dvarahq.oss/evals4j-core?label=maven%20central)](https://central.sonatype.com/artifact/com.dvarahq.oss/evals4j-core)
 [![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![java](https://img.shields.io/badge/java-17%2B-orange.svg)](#install)
@@ -38,7 +38,7 @@ result.comment();  // "The response includes an unnecessary pleasantry ... Thus,
 > build from source:
 >
 > ```bash
-> git clone https://github.com/grabdoc/evals4j.git && cd evals4j && ./mvnw install
+> git clone https://github.com/dvarahq/evals4j.git && cd evals4j && ./mvnw install
 > ```
 
 Requires **Java 17+**. Add the BOM, then whichever modules you need.

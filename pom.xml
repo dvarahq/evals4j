@@ -11,7 +11,7 @@
 
   <name>evals4j</name>
   <description>Open-source evaluators for LLM applications on the JVM, for Spring AI and LangChain4j</description>
-  <url>https://github.com/grabdoc/evals4j</url>
+  <url>https://github.com/dvarahq/evals4j</url>
   <inceptionYear>2026</inceptionYear>
 
   <licenses>
@@ -22,17 +22,24 @@
     </license>
   </licenses>
 
+  <organization>
+    <name>Dvara</name>
+    <url>https://github.com/dvarahq</url>
+  </organization>
+
   <developers>
     <developer>
       <id>grabdoc</id>
       <url>https://github.com/grabdoc</url>
+      <organization>Dvara</organization>
+      <organizationUrl>https://github.com/dvarahq</organizationUrl>
     </developer>
   </developers>
 
   <scm>
-    <connection>scm:git:https://github.com/grabdoc/evals4j.git</connection>
-    <developerConnection>scm:git:ssh://git@github.com/grabdoc/evals4j.git</developerConnection>
-    <url>https://github.com/grabdoc/evals4j</url>
+    <connection>scm:git:https://github.com/dvarahq/evals4j.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/dvarahq/evals4j.git</developerConnection>
+    <url>https://github.com/dvarahq/evals4j</url>
   </scm>
 
   <modules>
