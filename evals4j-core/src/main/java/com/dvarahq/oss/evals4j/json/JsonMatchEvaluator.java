@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Scores structured output key by key.
@@ -134,13 +135,32 @@ public final class JsonMatchEvaluator implements Evaluator {
         return ScorerRunner.run(RUN_NAME, SCORE_KEY, this::score, request, tracer);
     }
 
+    @Override
+    public CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(EvalRequest request) {
+        return ScorerRunner.runAsync(RUN_NAME, SCORE_KEY, this::scoreAsync, request, tracer);
+    }
+
     private ScorerOutput score(EvalRequest request) {
         Prepared prepared = prepare(request.outputs(), request.referenceOutputs());
-
-        Map<String, Object> allScores = new LinkedHashMap<>(prepared.scores);
-        if (!prepared.rubricKeys.isEmpty()) {
-            allScores.putAll(judge(prepared));
+        if (prepared.rubricKeys.isEmpty()) {
+            return assemble(prepared, Map.of());
         }
+        // Every future is already complete, so this joins without ever parking the thread.
+        return assemble(prepared, judge(prepared, this::invokeBlocking).join());
+    }
+
+    private CompletableFuture<ScorerOutput> scoreAsync(EvalRequest request) {
+        Prepared prepared = prepare(request.outputs(), request.referenceOutputs());
+        if (prepared.rubricKeys.isEmpty()) {
+            return CompletableFuture.completedFuture(assemble(prepared, Map.of()));
+        }
+        return judge(prepared, model::invokeStructuredAsync)
+                .thenApply(judged -> assemble(prepared, judged));
+    }
+
+    private ScorerOutput assemble(Prepared prepared, Map<String, Object> judged) {
+        Map<String, Object> allScores = new LinkedHashMap<>(prepared.scores);
+        allScores.putAll(judged);
 
         Map<String, Object> aggregated =
                 aggregate(SCORE_KEY, allScores, prepared.useListReducer, aggregator, listAggregator);
@@ -148,6 +168,24 @@ public final class JsonMatchEvaluator implements Evaluator {
         Map<String, ScorerOutput.Single> results = new LinkedHashMap<>();
         aggregated.forEach((key, value) -> results.put(key, toSingle(value)));
         return ScorerOutput.keyed(results);
+    }
+
+    /**
+     * How a judge call is made.
+     *
+     * <p>The scoring logic is identical whether or not the caller wants to block, and only the model
+     * call differs — so it is the model call that varies, rather than there being two copies of the
+     * key-narrowing and aggregation. The blocking implementation returns an already-completed future,
+     * which keeps the synchronous path synchronous: calls are made one at a time on the calling
+     * thread, exactly as before.
+     */
+    @FunctionalInterface
+    private interface JudgeInvoker {
+        CompletableFuture<JsonNode> invoke(List<ChatMessage> messages, JsonNode schema);
+    }
+
+    private CompletableFuture<JsonNode> invokeBlocking(List<ChatMessage> messages, JsonNode schema) {
+        return CompletableFuture.completedFuture(model.invokeStructured(messages, schema));
     }
 
     private static ScorerOutput.Single toSingle(Object value) {
@@ -168,12 +206,13 @@ public final class JsonMatchEvaluator implements Evaluator {
      * narrowed schema, matching upstream: judging keys in isolation stops one key's rubric from
      * colouring another's score.
      */
-    private Map<String, Object> judge(Prepared prepared) {
+    private CompletableFuture<Map<String, Object>> judge(Prepared prepared, JudgeInvoker invoker) {
         if (aggregator != null) {
-            return invokeJudge(prepared, prepared.rubricKeys, prepared.formattedRubric, prepared.schema);
+            return invokeJudge(
+                    prepared, prepared.rubricKeys, prepared.formattedRubric, prepared.schema, invoker);
         }
 
-        Map<String, Object> scores = new LinkedHashMap<>();
+        List<CompletableFuture<Map<String, Object>>> perKey = new ArrayList<>();
         for (String baseKey : new TreeSet<>(baseKeysOf(prepared.rubricKeys, prepared.useListReducer))) {
             Set<String> rawKeys = new LinkedHashSet<>();
             for (String rawKey : prepared.rubricKeys) {
@@ -183,13 +222,26 @@ public final class JsonMatchEvaluator implements Evaluator {
             }
             ObjectNode narrowed = narrowSchema(prepared.schema, rawKeys);
             String keyRubric = "Key: " + baseKey + ", Criteria: " + rubric.get(baseKey) + "\n";
-            scores.putAll(invokeJudge(prepared, rawKeys, keyRubric, narrowed));
+            perKey.add(invokeJudge(prepared, rawKeys, keyRubric, narrowed, invoker));
         }
-        return scores;
+
+        // Asynchronously these calls are in flight together; the merge still walks them in key order,
+        // so the scores come out in the same order either way.
+        return CompletableFuture.allOf(perKey.toArray(CompletableFuture[]::new)).thenApply(ignored -> {
+            Map<String, Object> scores = new LinkedHashMap<>();
+            for (CompletableFuture<Map<String, Object>> judged : perKey) {
+                scores.putAll(judged.join());
+            }
+            return scores;
+        });
     }
 
-    private Map<String, Object> invokeJudge(
-            Prepared prepared, Set<String> rawKeys, String formattedRubric, ObjectNode schema) {
+    private CompletableFuture<Map<String, Object>> invokeJudge(
+            Prepared prepared,
+            Set<String> rawKeys,
+            String formattedRubric,
+            ObjectNode schema,
+            JudgeInvoker invoker) {
 
         String outputsText = renderKeys(prepared.outputs, rawKeys);
         String referenceText = renderKeys(prepared.reference, rawKeys);
@@ -198,9 +250,12 @@ public final class JsonMatchEvaluator implements Evaluator {
                 USER_PROMPT,
                 Map.of("rubric", formattedRubric, "outputs", outputsText, "reference_outputs", referenceText));
 
-        JsonNode response = model.invokeStructured(
-                List.of(ChatMessage.system(SYSTEM_PROMPT), ChatMessage.user(userPrompt)), schema);
+        return invoker.invoke(
+                        List.of(ChatMessage.system(SYSTEM_PROMPT), ChatMessage.user(userPrompt)), schema)
+                .thenApply(response -> readScores(response, rawKeys));
+    }
 
+    private static Map<String, Object> readScores(JsonNode response, Set<String> rawKeys) {
         Map<String, Object> scores = new LinkedHashMap<>();
         for (String rawKey : rawKeys) {
             JsonNode value = response.get(rawKey);

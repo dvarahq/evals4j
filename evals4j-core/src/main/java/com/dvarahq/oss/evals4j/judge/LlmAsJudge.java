@@ -21,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Scores output by asking a model, with structured output so the score is parsed rather than
@@ -100,6 +101,11 @@ public final class LlmAsJudge implements Evaluator {
         return ScorerRunner.run(runName, feedbackKey, this::score, request, tracer);
     }
 
+    @Override
+    public CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(EvalRequest request) {
+        return ScorerRunner.runAsync(runName, feedbackKey, this::scoreAsync, request, tracer);
+    }
+
     /**
      * The judge's raw response, for use with a custom {@link Builder#outputSchema}.
      *
@@ -112,8 +118,15 @@ public final class LlmAsJudge implements Evaluator {
     }
 
     private ScorerOutput score(EvalRequest request) {
-        JsonNode response = model.invokeStructured(buildMessages(request), schemaFor());
+        return toScorerOutput(model.invokeStructured(buildMessages(request), schemaFor()));
+    }
 
+    private CompletableFuture<ScorerOutput> scoreAsync(EvalRequest request) {
+        return model.invokeStructuredAsync(buildMessages(request), schemaFor())
+                .thenApply(this::toScorerOutput);
+    }
+
+    private ScorerOutput toScorerOutput(JsonNode response) {
         JsonNode scoreNode = response.get("score");
         if (scoreNode == null) {
             if (outputSchema != null) {

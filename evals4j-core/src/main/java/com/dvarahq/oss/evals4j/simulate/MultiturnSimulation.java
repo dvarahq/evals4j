@@ -14,6 +14,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ForkJoinPool;
 import java.util.function.BiPredicate;
 
 /**
@@ -71,6 +74,62 @@ public final class MultiturnSimulation {
      * rather than mid-turn.
      */
     public SimulationResult run() {
+        List<ChatMessage> trajectory = converse();
+
+        List<EvaluatorResult> results = new ArrayList<>();
+        for (Evaluator evaluator : trajectoryEvaluators) {
+            try {
+                results.addAll(evaluator.evaluateAll(requestFor(trajectory)));
+            } catch (RuntimeException e) {
+                // One failing evaluator should not discard the transcript or the other scores.
+                log.warn("Trajectory evaluator {} failed", evaluator, e);
+            }
+        }
+        return new SimulationResult(trajectory, results);
+    }
+
+    /**
+     * Runs the conversation on {@code executor}, then scores the transcript without blocking.
+     *
+     * <p>The conversation itself stays sequential — each turn depends on the last, and both
+     * {@link SimulatedApp} and {@link SimulatedUser} are blocking — so it is handed to the executor
+     * whole. The scoring that follows is where the concurrency is: the trajectory evaluators are
+     * independent, so they run together rather than one after another.
+     */
+    public CompletableFuture<SimulationResult> runAsync(Executor executor) {
+        return CompletableFuture.supplyAsync(this::converse, executor).thenCompose(this::scoreAsync);
+    }
+
+    /** Runs on the common pool. Prefer {@link #runAsync(Executor)} — a simulation blocks on IO. */
+    public CompletableFuture<SimulationResult> runAsync() {
+        return runAsync(ForkJoinPool.commonPool());
+    }
+
+    private CompletableFuture<SimulationResult> scoreAsync(List<ChatMessage> trajectory) {
+        List<CompletableFuture<List<EvaluatorResult>>> scored = new ArrayList<>();
+        for (Evaluator evaluator : trajectoryEvaluators) {
+            scored.add(evaluator
+                    .evaluateAllAsync(requestFor(trajectory))
+                    .exceptionally(error -> {
+                        log.warn("Trajectory evaluator {} failed", evaluator, error);
+                        return List.of();
+                    }));
+        }
+
+        return CompletableFuture.allOf(scored.toArray(CompletableFuture[]::new)).thenApply(ignored -> {
+            List<EvaluatorResult> results = new ArrayList<>();
+            for (CompletableFuture<List<EvaluatorResult>> future : scored) {
+                results.addAll(future.join());
+            }
+            return new SimulationResult(trajectory, results);
+        });
+    }
+
+    private EvalRequest requestFor(List<ChatMessage> trajectory) {
+        return EvalRequest.of(null, List.copyOf(trajectory), referenceOutputs);
+    }
+
+    private List<ChatMessage> converse() {
         List<ChatMessage> trajectory = new ArrayList<>();
         Set<String> seenIds = new LinkedHashSet<>();
         int turnCounter = 0;
@@ -93,18 +152,7 @@ public final class MultiturnSimulation {
                 break;
             }
         }
-
-        List<EvaluatorResult> results = new ArrayList<>();
-        for (Evaluator evaluator : trajectoryEvaluators) {
-            try {
-                results.addAll(evaluator.evaluateAll(
-                        EvalRequest.of(null, List.copyOf(trajectory), referenceOutputs)));
-            } catch (RuntimeException e) {
-                // One failing evaluator should not discard the transcript or the other scores.
-                log.warn("Trajectory evaluator {} failed", evaluator, e);
-            }
-        }
-        return new SimulationResult(trajectory, results);
+        return trajectory;
     }
 
     /**
@@ -211,6 +259,10 @@ public final class MultiturnSimulation {
 
         public SimulationResult run() {
             return build().run();
+        }
+
+        public CompletableFuture<SimulationResult> runAsync(Executor executor) {
+            return build().runAsync(executor);
         }
     }
 }
