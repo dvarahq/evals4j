@@ -342,6 +342,7 @@ nothing about an LLM score.
 `EvalReport` implements `EvalTracer`; register it on your evaluators and write a summary at the end
 of the run — the trend across runs is what matters, not one pass or fail. There is no JUnit
 extension doing this for you yet, so register it and call `writeMarkdown` in `@AfterAll` yourself.
+One is planned for 0.3.0; see [CHANGELOG.md](CHANGELOG.md).
 
 ---
 

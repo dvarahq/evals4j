@@ -3,6 +3,17 @@
 Notable changes per release. Versions are evals4j's own; the OpenEvals version it ports is recorded
 in [PARITY.md](PARITY.md).
 
+## 0.3.0 — unreleased
+
+Nothing yet. `main` builds as `0.3.0-SNAPSHOT`; the version on Maven Central is
+[0.2.0](#020--2026-08-03).
+
+### Planned
+
+- A JUnit 5 `Extension` that registers `EvalReport` and writes it out, so a suite does not have to
+  wire the tracer and call `writeMarkdown` in `@AfterAll` by hand. This is the one thing 0.2.0
+  promised for 0.3.0; see the note under its Documentation heading.
+
 ## 0.2.0 — 2026-08-03
 
 Upstream OpenEvals has had no functional change since its 0.2.0 tag, so this release is about
