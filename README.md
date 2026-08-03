@@ -34,7 +34,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
 <dependencyManagement>
   <dependencies>
     <dependency>
-      <groupId>io.github.grabdoc</groupId>
+      <groupId>com.dvarahq.oss</groupId>
       <artifactId>evals4j-bom</artifactId>
       <version>0.1.0-SNAPSHOT</version>
       <type>pom</type>
@@ -54,7 +54,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
 | `evals4j-junit5` | assertions and a report for eval suites |
 
 Runnable examples live in [`evals4j-examples`](evals4j-examples) — start with
-[`AgentTrajectoryExample`](evals4j-examples/src/main/java/io/github/grabdoc/evals4j/examples/AgentTrajectoryExample.java),
+[`AgentTrajectoryExample`](evals4j-examples/src/main/java/com/dvarahq/oss/evals4j/examples/AgentTrajectoryExample.java),
 which needs no API key.
 
 ### Spring Boot
@@ -63,11 +63,11 @@ Add the starter and you are done — an existing `ChatModel` bean is enough.
 
 ```xml
 <dependency>
-  <groupId>io.github.grabdoc</groupId>
+  <groupId>com.dvarahq.oss</groupId>
   <artifactId>evals4j-spring-boot-starter</artifactId>
 </dependency>
 <dependency>
-  <groupId>io.github.grabdoc</groupId>
+  <groupId>com.dvarahq.oss</groupId>
   <artifactId>evals4j-springai</artifactId>
 </dependency>
 ```

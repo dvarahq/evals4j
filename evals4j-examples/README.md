@@ -6,16 +6,16 @@ Nothing here is published to Maven Central — the module exists to be read and 
 
 | example | what it shows | needs a key? |
 |---|---|---|
-| [`AgentTrajectoryExample`](src/main/java/io/github/grabdoc/evals4j/examples/AgentTrajectoryExample.java) | tool-call matching, match modes, per-tool argument overrides | **no** |
-| [`QuickstartExample`](src/main/java/io/github/grabdoc/evals4j/examples/QuickstartExample.java) | LLM-as-judge: conciseness, correctness, continuous scores | yes |
-| [`RagExample`](src/main/java/io/github/grabdoc/evals4j/examples/RagExample.java) | the four RAG evaluators, and why they are separate | yes |
-| [`StructuredExtractionExample`](src/main/java/io/github/grabdoc/evals4j/examples/StructuredExtractionExample.java) | per-key scoring of extracted objects, exact fields plus a rubric field | yes |
-| [`SimulationExample`](src/main/java/io/github/grabdoc/evals4j/examples/SimulationExample.java) | driving an agent through a whole conversation, then scoring it | yes |
-| [`EvalSuiteExampleTest`](src/test/java/io/github/grabdoc/evals4j/examples/EvalSuiteExampleTest.java) | an eval suite as a JUnit test class | partly |
+| [`AgentTrajectoryExample`](src/main/java/com/dvarahq/oss/evals4j/examples/AgentTrajectoryExample.java) | tool-call matching, match modes, per-tool argument overrides | **no** |
+| [`QuickstartExample`](src/main/java/com/dvarahq/oss/evals4j/examples/QuickstartExample.java) | LLM-as-judge: conciseness, correctness, continuous scores | yes |
+| [`RagExample`](src/main/java/com/dvarahq/oss/evals4j/examples/RagExample.java) | the four RAG evaluators, and why they are separate | yes |
+| [`StructuredExtractionExample`](src/main/java/com/dvarahq/oss/evals4j/examples/StructuredExtractionExample.java) | per-key scoring of extracted objects, exact fields plus a rubric field | yes |
+| [`SimulationExample`](src/main/java/com/dvarahq/oss/evals4j/examples/SimulationExample.java) | driving an agent through a whole conversation, then scoring it | yes |
+| [`EvalSuiteExampleTest`](src/test/java/com/dvarahq/oss/evals4j/examples/EvalSuiteExampleTest.java) | an eval suite as a JUnit test class | partly |
 
 `QuickstartExample`, `StructuredExtractionExample` and `SimulationExample` use Spring AI;
 `RagExample` uses LangChain4j. The evaluator code is identical either way — only the two lines in
-[`Models`](src/main/java/io/github/grabdoc/evals4j/examples/Models.java) that build the judge differ.
+[`Models`](src/main/java/com/dvarahq/oss/evals4j/examples/Models.java) that build the judge differ.
 
 ## Running them
 
@@ -24,7 +24,7 @@ Start with the one that needs nothing:
 ```bash
 ./mvnw -q -pl evals4j-examples -am install -DskipTests
 ./mvnw -q -pl evals4j-examples exec:java \
-    -Dexec.mainClass=io.github.grabdoc.evals4j.examples.AgentTrajectoryExample
+    -Dexec.mainClass=com.dvarahq.oss.evals4j.examples.AgentTrajectoryExample
 ```
 
 ```
@@ -51,7 +51,7 @@ export OPENAI_API_KEY=sk-...
 export EVALS4J_MODEL=gpt-5.4          # optional
 
 ./mvnw -q -pl evals4j-examples exec:java \
-    -Dexec.mainClass=io.github.grabdoc.evals4j.examples.QuickstartExample
+    -Dexec.mainClass=com.dvarahq.oss.evals4j.examples.QuickstartExample
 ```
 
 The eval suite runs as an ordinary test. Its deterministic half always runs; the model-backed half

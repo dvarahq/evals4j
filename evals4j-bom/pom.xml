@@ -5,7 +5,7 @@
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
-    <groupId>io.github.grabdoc</groupId>
+    <groupId>com.dvarahq.oss</groupId>
     <artifactId>evals4j-parent</artifactId>
     <version>0.1.0-SNAPSHOT</version>
   </parent>
@@ -20,32 +20,32 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>io.github.grabdoc</groupId>
+        <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-core</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.github.grabdoc</groupId>
+        <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-springai</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.github.grabdoc</groupId>
+        <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-langchain4j</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.github.grabdoc</groupId>
+        <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-sandbox</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.github.grabdoc</groupId>
+        <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-junit5</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>io.github.grabdoc</groupId>
+        <groupId>com.dvarahq.oss</groupId>
         <artifactId>evals4j-spring-boot-starter</artifactId>
         <version>${project.version}</version>
       </dependency>

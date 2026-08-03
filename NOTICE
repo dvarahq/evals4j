@@ -11,7 +11,7 @@ This product contains material derived from OpenEvals.
 What is derived:
 
   * The 33 evaluator prompt templates in
-    evals4j-core/src/main/java/io/github/grabdoc/evals4j/prompt/Prompts.java
+    evals4j-core/src/main/java/com/dvarahq/oss/evals4j/prompt/Prompts.java
     are reproduced verbatim from openevals/python/openevals/prompts/**.
 
   * The following algorithms are ports of the corresponding OpenEvals

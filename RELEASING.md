@@ -4,7 +4,7 @@ Artifacts are published to Maven Central by the [`release`](.github/workflows/re
 
 ## What gets published
 
-Eight artifacts under `io.github.grabdoc`: the parent POM, `evals4j-bom`, and the six library
+Eight artifacts under `com.dvarahq.oss`: the parent POM, `evals4j-bom`, and the six library
 modules. `evals4j-examples` is deliberately excluded — see the `excludeArtifacts` note in the root
 POM.
 
@@ -15,8 +15,27 @@ POM.
 
 ### 1. Claim the namespace
 
-Register `io.github.grabdoc` at [central.sonatype.com](https://central.sonatype.com/), and verify it
-by creating the public repository the portal names.
+Register `com.dvarahq.oss` at [central.sonatype.com](https://central.sonatype.com/).
+
+Because this is a domain-based namespace, Central verifies it through DNS rather than through a
+GitHub repository: the portal issues a verification code, and you add it as a TXT record on
+`dvarahq.com`.
+
+```
+Type:  TXT
+Host:  @            (i.e. dvarahq.com itself)
+Value: <the code the portal shows you>
+```
+
+Then press **Verify Namespace**. Propagation is usually minutes but can take longer; the portal
+re-checks on demand.
+
+Verifying `com.dvarahq.oss` also covers everything beneath it, so no further claim is needed if the
+group ever gains sub-namespaces.
+
+> If you do not control `dvarahq.com`, this namespace cannot be published — Central will not issue
+> it. Switching to a `io.github.<user>` namespace, which is verified by creating a repository the
+> portal names, is the fallback.
 
 ### 2. Generate a signing key
 
