@@ -65,6 +65,42 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing $VERSION"
 
+      # Checked before the build, so a misconfigured repository fails in seconds with a message
+      # that names the problem — maven-gpg-plugin's own failure is a bare "Exit code: 2".
+      - name: Check the required secrets
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+          CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+        run: |
+          MISSING=""
+          # Signing happens even on a dry run, so the key is always needed.
+          [ -z "$GPG_PRIVATE_KEY" ] && MISSING="$MISSING GPG_PRIVATE_KEY"
+          [ -z "$GPG_PASSPHRASE" ] && MISSING="$MISSING GPG_PASSPHRASE"
+
+          # Central credentials are only needed when something is actually uploaded.
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ inputs.dryRun }}" != "true" ]; then
+            [ -z "$CENTRAL_USERNAME" ] && MISSING="$MISSING CENTRAL_USERNAME"
+            [ -z "$CENTRAL_PASSWORD" ] && MISSING="$MISSING CENTRAL_PASSWORD"
+          fi
+
+          if [ -n "$MISSING" ]; then
+            echo "::error::Missing repository secrets:$MISSING — add them under Settings → Secrets and variables → Actions."
+            {
+              echo "### Release cannot run"
+              echo
+              echo "These repository secrets are not set:"
+              echo
+              for s in $MISSING; do echo "- \`$s\`"; done
+              echo
+              echo "Add them under Settings → Secrets and variables → Actions; scripts/setup-signing-key.sh generates the signing key."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo "All required secrets are present."
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
