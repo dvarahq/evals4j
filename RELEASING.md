@@ -46,8 +46,23 @@ publishes the public half, and stores both secrets:
 ./scripts/setup-signing-key.sh --email opensource@dvarahq.com
 ```
 
-It prompts twice for the passphrase: once for gpg, once for `gh`. The script never handles it
-itself, and the private key is piped from gpg into `gh` rather than written to disk.
+In a normal terminal it prompts twice for the passphrase — once for gpg, once for `gh` — and never
+handles it itself. The private key is piped from gpg into `gh`, so it never lands on disk.
+
+Where there is no terminal (a CI runner, or any tool that runs commands with stdin closed) gpg
+cannot open `/dev/tty` to ask. Supply the passphrase instead:
+
+```bash
+# generate one; it is stored as the secret and printed once
+./scripts/setup-signing-key.sh --email opensource@dvarahq.com --auto-passphrase
+
+# or provide your own
+export MY_PASS='...'
+./scripts/setup-signing-key.sh --email opensource@dvarahq.com --passphrase-env MY_PASS
+```
+
+Without one of these the script stops immediately with instructions rather than hanging on a prompt
+nobody can answer.
 
 `--check` verifies prerequisites without creating anything; `--skip-secrets` prints the commands
 instead of running them; `--key-id` reuses a key you already have.
