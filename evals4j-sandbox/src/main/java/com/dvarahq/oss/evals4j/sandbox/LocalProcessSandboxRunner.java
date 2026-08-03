@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 /**
@@ -38,20 +37,9 @@ public final class LocalProcessSandboxRunner implements SandboxRunner {
             ProcessBuilder builder = new ProcessBuilder(request.command()).directory(directory.toFile());
             builder.environment().putAll(request.environment());
 
-            Process process = builder.start();
-            String stdout;
-            String stderr;
-            try (var out = process.getInputStream();
-                    var err = process.getErrorStream()) {
-                stdout = new String(out.readAllBytes(), StandardCharsets.UTF_8);
-                stderr = new String(err.readAllBytes(), StandardCharsets.UTF_8);
-            }
-
-            if (!process.waitFor(request.timeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                process.destroyForcibly();
-                return new Result(-1, stdout, stderr, true);
-            }
-            return new Result(process.exitValue(), stdout, stderr, false);
+            Processes.Outcome outcome = Processes.run(builder, request.timeout(), null);
+            return new Result(
+                    outcome.exitCode(), outcome.stdout(), outcome.stderr(), outcome.timedOut());
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Could not run " + String.join(" ", request.command())

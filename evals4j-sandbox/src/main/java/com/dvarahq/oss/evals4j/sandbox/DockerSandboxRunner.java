@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -89,8 +90,14 @@ public final class DockerSandboxRunner implements SandboxRunner {
             Files.writeString(file, request.code(), StandardCharsets.UTF_8);
             makeWorldReadable(directory, file);
 
+            // Named so a timed-out run can be killed by name. Destroying the `docker run` client
+            // does not stop the container it started, and with --rm and no name there is then no
+            // handle left to stop it with — it keeps its memory and CPU reservation indefinitely.
+            String containerName = "evals4j-" + UUID.randomUUID();
+
             List<String> command = new ArrayList<>(List.of(
                     dockerCommand, "run", "--rm",
+                    "--name", containerName,
                     "--workdir", "/workspace",
                     "--volume", directory.toAbsolutePath() + ":/workspace:ro"));
 
@@ -115,20 +122,10 @@ public final class DockerSandboxRunner implements SandboxRunner {
             command.add(image);
             command.addAll(request.command());
 
-            Process process = new ProcessBuilder(command).start();
-            String stdout;
-            String stderr;
-            try (var out = process.getInputStream();
-                    var err = process.getErrorStream()) {
-                stdout = new String(out.readAllBytes(), StandardCharsets.UTF_8);
-                stderr = new String(err.readAllBytes(), StandardCharsets.UTF_8);
-            }
-
-            if (!process.waitFor(request.timeout().toMillis(), TimeUnit.MILLISECONDS)) {
-                process.destroyForcibly();
-                return new Result(-1, stdout, stderr, true);
-            }
-            return new Result(process.exitValue(), stdout, stderr, false);
+            Processes.Outcome outcome = Processes.run(
+                    new ProcessBuilder(command), request.timeout(), () -> kill(containerName));
+            return new Result(
+                    outcome.exitCode(), outcome.stdout(), outcome.stderr(), outcome.timedOut());
         } catch (IOException e) {
             throw new IllegalStateException(
                     "Could not run " + dockerCommand + ". Is Docker installed and running?", e);
@@ -137,6 +134,26 @@ public final class DockerSandboxRunner implements SandboxRunner {
             throw new IllegalStateException("Interrupted while running the sandboxed code", e);
         } finally {
             LocalProcessSandboxRunner.deleteRecursively(directory);
+        }
+    }
+
+    /**
+     * Stops a timed-out container, best effort.
+     *
+     * <p>Failure here is not worth surfacing: the run has already timed out and that is what the
+     * caller is told about. The container carries {@code --rm}, so a successful kill also removes it.
+     */
+    private void kill(String containerName) {
+        try {
+            new ProcessBuilder(dockerCommand, "kill", containerName)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .redirectError(ProcessBuilder.Redirect.DISCARD)
+                    .start()
+                    .waitFor(20, TimeUnit.SECONDS);
+        } catch (IOException e) {
+            // Docker is already unreachable; the timeout is the story.
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
     }
 

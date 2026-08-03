@@ -11,8 +11,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class SandboxRunnerTest {
 
@@ -57,6 +59,33 @@ class SandboxRunnerTest {
     }
 
     @Test
+    void localRunnerEnforcesTheTimeout() {
+        long startedAt = System.nanoTime();
+        SandboxRunner.Result result = LocalProcessSandboxRunner.create()
+                .run(shellScript("sleep 30", Duration.ofSeconds(1)));
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - startedAt);
+
+        assertThat(result.timedOut()).isTrue();
+        // The point of the timeout is to bound the wait, so the clock is part of the assertion.
+        assertThat(elapsed).isLessThan(Duration.ofSeconds(15));
+    }
+
+    @Test
+    void localRunnerDoesNotDeadlockOnLargeStderr() {
+        // Draining stdout to EOF before touching stderr deadlocks once the child fills the stderr
+        // pipe buffer: it blocks writing, so it never closes stdout, so the read never returns.
+        assertTimeoutPreemptively(Duration.ofSeconds(30), () -> {
+            SandboxRunner.Result result = LocalProcessSandboxRunner.create()
+                    .run(shellScript(
+                            "yes 'noisy diagnostics' | head -c 400000 >&2; echo done", Duration.ofSeconds(20)));
+
+            assertThat(result.timedOut()).isFalse();
+            assertThat(result.stdout()).contains("done");
+            assertThat(result.stderr()).hasSizeGreaterThan(64 * 1024);
+        });
+    }
+
+    @Test
     void localRunnerRequiresACommand() {
         assertThatThrownBy(() -> LocalProcessSandboxRunner.create()
                         .run(new SandboxRunner.Request("echo hi", "outputs.sh", List.of(), Map.of(), null)))
@@ -93,6 +122,33 @@ class SandboxRunnerTest {
                         result.exitCode(), result.stdout(), result.stderr())
                 .isTrue();
         assertThat(result.stdout()).contains("from-the-container");
+    }
+
+    @Test
+    @EnabledIf("com.dvarahq.oss.evals4j.sandbox.DockerSandboxRunner#isDockerAvailable")
+    void dockerRunnerKillsTheContainerOnTimeout() throws Exception {
+        long startedAt = System.nanoTime();
+        SandboxRunner.Result result = DockerSandboxRunner.builder()
+                .image(IMAGE)
+                .build()
+                .run(shellScript("sleep 120", Duration.ofSeconds(3)));
+        Duration elapsed = Duration.ofNanos(System.nanoTime() - startedAt);
+
+        assertThat(result.timedOut()).isTrue();
+        assertThat(elapsed).isLessThan(Duration.ofSeconds(40));
+
+        // Killing the `docker run` client would leave the container alive holding its reservation,
+        // so assert on the daemon's view rather than on the exit path.
+        assertThat(runningContainerNames()).noneMatch(name -> name.startsWith("evals4j-"));
+    }
+
+    private static List<String> runningContainerNames() throws Exception {
+        Process process = new ProcessBuilder("docker", "ps", "--format", "{{.Names}}")
+                .redirectErrorStream(true)
+                .start();
+        String output = new String(process.getInputStream().readAllBytes(), UTF_8);
+        process.waitFor(20, java.util.concurrent.TimeUnit.SECONDS);
+        return output.lines().map(String::trim).filter(line -> !line.isEmpty()).toList();
     }
 
     @Test
