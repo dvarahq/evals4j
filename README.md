@@ -340,9 +340,39 @@ Failure messages carry the judge's reasoning, because "expected true but was fal
 nothing about an LLM score.
 
 `EvalReport` implements `EvalTracer`; register it on your evaluators and write a summary at the end
-of the run — the trend across runs is what matters, not one pass or fail. There is no JUnit
-extension doing this for you yet, so register it and call `writeMarkdown` in `@AfterAll` yourself.
-One is planned for 0.3.0; see [CHANGELOG.md](CHANGELOG.md).
+of the run — the trend across runs is what matters, not one pass or fail. On 0.2.0 you hold the
+report yourself and call `writeMarkdown` in an `@AfterAll`.
+
+**Unreleased, on `main` for 0.3.0.** `@EvalSuite` does that part for you: it supplies the report as a
+test parameter, shares one across every class in the run, and writes it out.
+
+```java
+@EvalSuite
+class ConcisenessEvalTest {
+
+    @Test
+    void staysConcise(EvalReport report) {
+        LlmAsJudge judge = LlmAsJudge.builder()
+                .prompt(Prompts.CONCISENESS_PROMPT)
+                .model(judgeModel)
+                .tracer(report)          // still explicit
+                .build();
+
+        EvalAssert.assertPassed(judge.evaluate(question, answer));
+    }
+}
+```
+
+The report goes to `target/evals4j-report.md`, or wherever `-Devals4j.report=…` says. One file
+covers the whole run rather than one per class, because a mean drifting from 0.9 to 0.7 over a month
+is the signal, and per-class files fragment it.
+
+Which evaluators report into it stays explicit, because an evaluator takes its tracer at
+construction — the extension owns the report's lifetime, your suite says who feeds it. If a whole
+module is eval suites and even the annotation is noise, set
+`junit.jupiter.extensions.autodetection.enabled=true` and drop it; the extension registers itself
+through `META-INF/services`. JUnit leaves autodetection off by default, so nothing happens until you
+ask for it.
 
 ---
 
