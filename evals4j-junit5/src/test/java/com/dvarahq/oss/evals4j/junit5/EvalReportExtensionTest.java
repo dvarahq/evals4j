@@ -25,6 +25,124 @@ class EvalReportExtensionTest {
     @AfterEach
     void clearTheConfiguredPath() {
         System.clearProperty(EvalReportExtension.REPORT_PATH_PROPERTY);
+        System.clearProperty(EvalReportExtension.MAX_DROP_PROPERTY);
+    }
+
+    /** Writes a baseline as if a previous run had left it. */
+    private static void givenPreviousRun(Path json, String key, double mean, long count)
+            throws Exception {
+        Files.writeString(
+                json,
+                """
+                {"schema":1,"generatedAt":"2026-01-01T00:00:00Z","keys":{"%s":{"mean":%s,"count":%d}}}
+                """
+                        .formatted(key, mean, count));
+    }
+
+    @Test
+    void writesAJsonSnapshotAlongsideTheMarkdown(@TempDir Path directory) throws Exception {
+        Path report = directory.resolve("evals.md");
+        System.setProperty(EvalReportExtension.REPORT_PATH_PROPERTY, report.toString());
+
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(ScoringSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(1).failed(0));
+
+        Path json = directory.resolve("evals.json");
+        assertThat(json).exists();
+        assertThat(EvalReport.readJson(json))
+                .containsKey(ExactMatch.FEEDBACK_KEY)
+                .extractingByKey(ExactMatch.FEEDBACK_KEY)
+                .extracting(EvalReport.KeySummary::mean)
+                .isEqualTo(1.0);
+    }
+
+    @Test
+    void showsTheChangeAgainstThePreviousRun(@TempDir Path directory) throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 1.0, 1);
+
+        // This run scores 0.0 against a baseline of 1.0.
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(MismatchSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(1).failed(0));
+
+        assertThat(Files.readString(directory.resolve("evals.md"))).contains("-1.000");
+    }
+
+    @Test
+    void readsTheBaselineOncePerRunRatherThanPerClass(@TempDir Path directory) throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 0.0, 1);
+
+        // Two classes, each scoring 1.0. The first one's afterAll overwrites evals.json with 1.000.
+        // If the baseline were re-read per class, the second class would compare against that and
+        // report +0.000; against the real baseline of 0.0 it must be +1.000.
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(ScoringSuite.class), selectClass(SecondScoringSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(2).failed(0));
+
+        assertThat(Files.readString(directory.resolve("evals.md"))).contains("+1.000");
+    }
+
+    @Test
+    void aCorruptBaselineIsIgnoredRatherThanFatal(@TempDir Path directory) throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        Files.writeString(directory.resolve("evals.json"), "{ this is not json");
+
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(ScoringSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(1).failed(0));
+
+        // No baseline, so no delta — but the run itself must not have been harmed by the bad file.
+        assertThat(Files.readString(directory.resolve("evals.md"))).contains("—");
+    }
+
+    @Test
+    void theGateFailsTheRunWhenAKeyDrops(@TempDir Path directory) throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        System.setProperty(EvalReportExtension.MAX_DROP_PROPERTY, "0.1");
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 1.0, 1);
+
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(MismatchSuite.class))
+                .execute()
+                .containerEvents()
+                .assertStatistics(stats -> stats.failed(1));
+
+        // The report is still written: you cannot act on a regression you cannot see.
+        assertThat(directory.resolve("evals.md")).exists();
+    }
+
+    @Test
+    void noGateWhenTheThresholdIsUnset(@TempDir Path directory) throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 1.0, 1);
+
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(MismatchSuite.class))
+                .execute()
+                .containerEvents()
+                .assertStatistics(stats -> stats.failed(0));
+    }
+
+    @Test
+    void derivesTheJsonPathFromTheMarkdownPath() {
+        System.setProperty(EvalReportExtension.REPORT_PATH_PROPERTY, "build/reports/evals.md");
+        assertThat(EvalReportExtension.jsonPath()).isEqualTo(Path.of("build/reports/evals.json"));
     }
 
     @Test
@@ -147,6 +265,16 @@ class EvalReportExtensionTest {
         @Test
         void alsoScores(EvalReport report) {
             ExactMatch.create().withTracer(report).evaluate(EvalRequest.of(null, "world", "world"));
+        }
+    }
+
+    /** Scores 0.0, for testing a drop against a baseline. */
+    @ExtendWith(EvalReportExtension.class)
+    static class MismatchSuite {
+
+        @Test
+        void scoresAMismatch(EvalReport report) {
+            ExactMatch.create().withTracer(report).evaluate(EvalRequest.of(null, "left", "right"));
         }
     }
 
