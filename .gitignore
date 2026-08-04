@@ -27,3 +27,4 @@ pubring.*
 private-key*
 *-private.*
 .gnupg/
+/REVIEW.md
