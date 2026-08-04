@@ -43,7 +43,8 @@ public final class CodeEvaluator implements Evaluator {
         this.feedbackKey = feedbackKey;
         this.checker = checker;
         this.extractor = extractor;
-        this.tracer = tracer == null ? EvalTracer.NO_OP : tracer;
+        // Null when unset so ScorerRunner can fall back to an open EvalScope.
+        this.tracer = tracer;
     }
 
     /** Wraps any code checker with the extraction step. */

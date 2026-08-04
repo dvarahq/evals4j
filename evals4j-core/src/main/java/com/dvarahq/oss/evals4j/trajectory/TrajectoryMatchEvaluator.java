@@ -42,7 +42,8 @@ public final class TrajectoryMatchEvaluator implements Evaluator {
         this.matchMode = builder.matchMode;
         this.toolArgsMatchMode = builder.toolArgsMatchMode;
         this.overrides = Map.copyOf(builder.overrides);
-        this.tracer = builder.tracer == null ? EvalTracer.NO_OP : builder.tracer;
+        // Null when unset so ScorerRunner can fall back to an open EvalScope.
+        this.tracer = builder.tracer;
     }
 
     public static Builder builder() {

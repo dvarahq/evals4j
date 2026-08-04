@@ -2,6 +2,7 @@ package com.dvarahq.oss.evals4j.code;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.dvarahq.oss.evals4j.EvalRequest;
+import com.dvarahq.oss.evals4j.EvalScope;
 import com.dvarahq.oss.evals4j.Evaluator;
 import com.dvarahq.oss.evals4j.ScorerRunner;
 import com.dvarahq.oss.evals4j.internal.Json;
@@ -58,7 +59,8 @@ public final class CodeLlmAsJudge implements Evaluator {
                 builder.customExtractor,
                 builder.extractionModel != null ? builder.extractionModel : builder.model);
         this.feedbackKey = builder.feedbackKey;
-        this.tracer = builder.tracer == null ? EvalTracer.NO_OP : builder.tracer;
+        // Null when unset so ScorerRunner can fall back to an open EvalScope.
+        this.tracer = builder.tracer;
     }
 
     public static Builder builder() {
@@ -79,11 +81,14 @@ public final class CodeLlmAsJudge implements Evaluator {
     public CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(EvalRequest request) {
         // Extraction is a model call under the LLM strategy, so it must not run on the caller's
         // thread either — hence the supplyAsync rather than extracting up front.
-        return CompletableFuture.supplyAsync(() -> extractor.extract(request.outputs()))
-                .thenCompose(code -> code == null
+        // Both stages are captured so an open EvalScope survives the hand-off to the pool: the judge
+        // runs inside thenCompose, which is off the caller's thread.
+        return CompletableFuture.supplyAsync(
+                        EvalScope.capturing(() -> extractor.extract(request.outputs())))
+                .thenCompose(EvalScope.capturing(code -> code == null
                         ? CompletableFuture.completedFuture(
                                 ScorerRunner.toResults(feedbackKey, CodeEvaluator.extractionFailed()))
-                        : judge.evaluateAllAsync(request.toBuilder().outputs(code).build()));
+                        : judge.evaluateAllAsync(request.toBuilder().outputs(code).build())));
     }
 
     /** The key the score is recorded under. */

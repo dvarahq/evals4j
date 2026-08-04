@@ -1,6 +1,9 @@
 package com.dvarahq.oss.evals4j.junit5;
 
+import com.dvarahq.oss.evals4j.EvalScope;
 import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
@@ -23,18 +26,20 @@ import java.util.Map;
  *         LlmAsJudge judge = LlmAsJudge.builder()
  *                 .prompt(Prompts.CONCISENESS_PROMPT)
  *                 .model(model)
- *                 .tracer(report)          // still explicit — see below
  *                 .build();
  *         EvalAssert.assertPassed(judge.evaluate(question, answer));
  *     }
  * }
  * }</pre>
  *
- * <p><strong>The tracer wiring stays explicit.</strong> The extension cannot attach itself to an
- * evaluator the test builds, because an evaluator takes its tracer at construction and evals4j has no
- * ambient one — a global default tracer would be shared mutable state reaching across every module.
- * So the extension owns the report's lifetime and output, and the suite says which evaluators report
- * into it.
+ * <p><strong>No tracer wiring.</strong> The extension opens an {@link EvalScope} around each test
+ * carrying the run's report, so an evaluator built without a tracer reports into it. Until 0.4.0 every
+ * suite repeated {@code .tracer(report)}, because an evaluator takes its tracer at construction and
+ * there was nothing ambient to fall back to.
+ *
+ * <p>An evaluator that <em>was</em> given a tracer still uses that one — configured always beats
+ * ambient — so a suite mixing the two behaves as written. Taking the {@code EvalReport} parameter is
+ * still useful for asserting on the collected results directly.
  *
  * <p><strong>One report per run, not per class.</strong> The report lives in the root context, so
  * every test class in the run accumulates into it and the summary covers the whole suite. That is the
@@ -61,7 +66,8 @@ import java.util.Map;
  * its own. Even when it is on, a class that records no results writes no file, so ordinary unit tests
  * in the same run are unaffected.
  */
-public final class EvalReportExtension implements ParameterResolver, AfterAllCallback {
+public final class EvalReportExtension
+        implements ParameterResolver, BeforeEachCallback, AfterEachCallback, AfterAllCallback {
 
     /** System property naming the file the report is written to. */
     public static final String REPORT_PATH_PROPERTY = "evals4j.report";
@@ -79,6 +85,8 @@ public final class EvalReportExtension implements ParameterResolver, AfterAllCal
             ExtensionContext.Namespace.create(EvalReportExtension.class);
 
     private static final String REPORT_KEY = "report";
+
+    private static final String SCOPE_KEY = "scope";
 
     /**
      * The report and the baseline it is measured against.
@@ -98,6 +106,20 @@ public final class EvalReportExtension implements ParameterResolver, AfterAllCal
         @Override
         public void close() {
             gate(this);
+        }
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext context) {
+        // Opened per test rather than per class: the scope is thread-confined, and under parallel
+        // execution each test has its own thread.
+        context.getStore(NAMESPACE).put(SCOPE_KEY, EvalScope.open(reportFor(context)));
+    }
+
+    @Override
+    public void afterEach(ExtensionContext context) {
+        if (context.getStore(NAMESPACE).remove(SCOPE_KEY) instanceof EvalScope.Handle handle) {
+            handle.close();
         }
     }
 

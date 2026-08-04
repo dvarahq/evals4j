@@ -47,13 +47,15 @@ public interface Evaluator {
      * {@link #evaluateAllAsync(EvalRequest, Executor)} when running a suite.
      */
     default CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(EvalRequest request) {
-        return CompletableFuture.supplyAsync(() -> evaluateAll(request));
+        // capturing() carries an open EvalScope onto the pool thread; without it an ambient tracer
+        // would be lost at the hand-off and the evaluation would report nowhere.
+        return CompletableFuture.supplyAsync(EvalScope.capturing(() -> evaluateAll(request)));
     }
 
     /** Runs the blocking evaluation on {@code executor}, for a pool sized for IO. */
     default CompletableFuture<List<EvaluatorResult>> evaluateAllAsync(
             EvalRequest request, Executor executor) {
-        return CompletableFuture.supplyAsync(() -> evaluateAll(request), executor);
+        return CompletableFuture.supplyAsync(EvalScope.capturing(() -> evaluateAll(request)), executor);
     }
 
     default CompletableFuture<EvaluatorResult> evaluateAsync(EvalRequest request) {

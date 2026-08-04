@@ -20,10 +20,25 @@ public final class ScorerRunner {
 
     private ScorerRunner() {}
 
+    /**
+     * Picks the tracer for a run: the one the evaluator was configured with, else whatever
+     * {@link EvalScope} has open, else nothing.
+     *
+     * <p>Configured always beats ambient, so opening a scope cannot redirect an evaluator that was
+     * told where to report. An evaluator handed {@link EvalTracer#NO_OP} on purpose stays quiet.
+     */
+    private static EvalTracer resolve(EvalTracer tracer) {
+        if (tracer != null) {
+            return tracer;
+        }
+        EvalTracer ambient = EvalScope.current();
+        return ambient == null ? EvalTracer.NO_OP : ambient;
+    }
+
     public static List<EvaluatorResult> run(
             String runName, String feedbackKey, Scorer scorer, EvalRequest request, EvalTracer tracer) {
 
-        EvalTracer effectiveTracer = tracer == null ? EvalTracer.NO_OP : tracer;
+        EvalTracer effectiveTracer = resolve(tracer);
         Object token = effectiveTracer.onStart(runName, feedbackKey);
         try {
             List<EvaluatorResult> results = stampRunId(toResults(feedbackKey, scorer.score(request)), token);
@@ -71,7 +86,7 @@ public final class ScorerRunner {
             EvalRequest request,
             EvalTracer tracer) {
 
-        EvalTracer effectiveTracer = tracer == null ? EvalTracer.NO_OP : tracer;
+        EvalTracer effectiveTracer = resolve(tracer);
         Object token = effectiveTracer.onStart(runName, feedbackKey);
 
         CompletableFuture<ScorerOutput> scored;

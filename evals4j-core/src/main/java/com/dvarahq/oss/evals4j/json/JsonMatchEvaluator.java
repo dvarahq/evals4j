@@ -113,7 +113,8 @@ public final class JsonMatchEvaluator implements Evaluator {
         this.listMatchMode = builder.listMatchMode;
         this.useReasoning = builder.useReasoning;
         this.model = builder.model;
-        this.tracer = builder.tracer == null ? EvalTracer.NO_OP : builder.tracer;
+        // Null when unset so ScorerRunner can fall back to an open EvalScope.
+        this.tracer = builder.tracer;
 
         if (model == null && !rubric.isEmpty()) {
             throw new IllegalArgumentException(

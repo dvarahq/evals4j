@@ -140,6 +140,22 @@ class EvalReportExtensionTest {
     }
 
     @Test
+    void collectsFromAnEvaluatorThatWasNeverGivenTheReport(@TempDir Path directory) throws Exception {
+        Path report = directory.resolve("evals.md");
+        System.setProperty(EvalReportExtension.REPORT_PATH_PROPERTY, report.toString());
+
+        // The suite below never calls withTracer/.tracer — the extension's EvalScope is the only way
+        // its score can reach the report.
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(AmbientSuite.class))
+                .execute()
+                .testEvents()
+                .assertStatistics(stats -> stats.succeeded(1).failed(0));
+
+        assertThat(Files.readString(report)).contains(ExactMatch.FEEDBACK_KEY);
+    }
+
+    @Test
     void derivesTheJsonPathFromTheMarkdownPath() {
         System.setProperty(EvalReportExtension.REPORT_PATH_PROPERTY, "build/reports/evals.md");
         assertThat(EvalReportExtension.jsonPath()).isEqualTo(Path.of("build/reports/evals.json"));
@@ -265,6 +281,16 @@ class EvalReportExtensionTest {
         @Test
         void alsoScores(EvalReport report) {
             ExactMatch.create().withTracer(report).evaluate(EvalRequest.of(null, "world", "world"));
+        }
+    }
+
+    /** Wires no tracer at all; relies entirely on the scope the extension opens. */
+    @EvalSuite
+    static class AmbientSuite {
+
+        @Test
+        void scoresWithoutWiringATracer() {
+            ExactMatch.create().evaluate(EvalRequest.of(null, "ambient", "ambient"));
         }
     }
 

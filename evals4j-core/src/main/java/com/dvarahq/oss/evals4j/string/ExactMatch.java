@@ -21,12 +21,16 @@ public final class ExactMatch implements Evaluator {
 
     public static final String FEEDBACK_KEY = "exact_match";
 
-    private static final ExactMatch INSTANCE = new ExactMatch(EvalTracer.NO_OP);
+    // null, not NO_OP: the shared instance has no tracer configured, which is what lets it report to
+    // an open EvalScope. NO_OP here would read as a deliberate silence and opt out of that.
+    private static final ExactMatch INSTANCE = new ExactMatch(null);
 
     private final EvalTracer tracer;
 
     private ExactMatch(EvalTracer tracer) {
-        this.tracer = tracer == null ? EvalTracer.NO_OP : tracer;
+        // Kept null rather than collapsed to NO_OP: ScorerRunner reads null as "none configured" and
+        // falls back to any open EvalScope. Substituting NO_OP here would silently opt out of that.
+        this.tracer = tracer;
     }
 
     public static ExactMatch create() {

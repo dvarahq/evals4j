@@ -70,7 +70,9 @@ public final class LlmAsJudge implements Evaluator {
         this.useReasoning = builder.useReasoning;
         this.fewShotExamples = List.copyOf(builder.fewShotExamples);
         this.outputSchema = builder.outputSchema;
-        this.tracer = builder.tracer == null ? EvalTracer.NO_OP : builder.tracer;
+        // Left null when unset so ScorerRunner can fall back to an open EvalScope; collapsing it to
+        // NO_OP here would opt every judge out of ambient tracing before the runner ever sees it.
+        this.tracer = builder.tracer;
         this.runName = DEFAULT_FEEDBACK_KEY.equals(feedbackKey)
                 ? "llm_as_judge"
                 : "llm_as_" + feedbackKey + "_judge";

@@ -21,12 +21,14 @@ public final class LevenshteinDistance implements Evaluator {
 
     public static final String FEEDBACK_KEY = "levenshtein_distance";
 
-    private static final LevenshteinDistance INSTANCE = new LevenshteinDistance(EvalTracer.NO_OP);
+    // null, not NO_OP — see ExactMatch: an unconfigured tracer is what enables EvalScope fallback.
+    private static final LevenshteinDistance INSTANCE = new LevenshteinDistance(null);
 
     private final EvalTracer tracer;
 
     private LevenshteinDistance(EvalTracer tracer) {
-        this.tracer = tracer == null ? EvalTracer.NO_OP : tracer;
+        // Null means "none configured", which lets ScorerRunner fall back to an open EvalScope.
+        this.tracer = tracer;
     }
 
     public static LevenshteinDistance create() {

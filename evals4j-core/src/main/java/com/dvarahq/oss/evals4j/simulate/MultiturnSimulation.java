@@ -1,6 +1,7 @@
 package com.dvarahq.oss.evals4j.simulate;
 
 import com.dvarahq.oss.evals4j.EvalRequest;
+import com.dvarahq.oss.evals4j.EvalScope;
 import com.dvarahq.oss.evals4j.Evaluator;
 import com.dvarahq.oss.evals4j.message.ChatMessage;
 import com.dvarahq.oss.evals4j.message.Messages;
@@ -97,7 +98,10 @@ public final class MultiturnSimulation {
      * independent, so they run together rather than one after another.
      */
     public CompletableFuture<SimulationResult> runAsync(Executor executor) {
-        return CompletableFuture.supplyAsync(this::converse, executor).thenCompose(this::scoreAsync);
+        // Both stages are captured: the evaluators run in scoreAsync, which thenCompose executes on
+        // whichever thread completed the conversation rather than on the caller's.
+        return CompletableFuture.supplyAsync(EvalScope.capturing(this::converse), executor)
+                .thenCompose(EvalScope.capturing(this::scoreAsync));
     }
 
     /** Runs on the common pool. Prefer {@link #runAsync(Executor)} — a simulation blocks on IO. */

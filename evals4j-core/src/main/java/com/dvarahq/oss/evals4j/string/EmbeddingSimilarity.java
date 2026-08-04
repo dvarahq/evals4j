@@ -35,7 +35,8 @@ public final class EmbeddingSimilarity implements Evaluator {
     private EmbeddingSimilarity(EmbeddingProvider embeddings, Algorithm algorithm, EvalTracer tracer) {
         this.embeddings = Objects.requireNonNull(embeddings, "embeddings");
         this.algorithm = Objects.requireNonNull(algorithm, "algorithm");
-        this.tracer = tracer == null ? EvalTracer.NO_OP : tracer;
+        // Null means "none configured", which lets ScorerRunner fall back to an open EvalScope.
+        this.tracer = tracer;
     }
 
     public static EmbeddingSimilarity create(EmbeddingProvider embeddings) {
