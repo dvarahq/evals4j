@@ -350,11 +350,10 @@ every class in the run, and writes it out, so no suite needs an `@AfterAll` call
 class ConcisenessEvalTest {
 
     @Test
-    void staysConcise(EvalReport report) {
+    void staysConcise() {
         LlmAsJudge judge = LlmAsJudge.builder()
                 .prompt(Prompts.CONCISENESS_PROMPT)
                 .model(judgeModel)
-                .tracer(report)          // still explicit
                 .build();
 
         EvalAssert.assertPassed(judge.evaluate(question, answer));
@@ -362,13 +361,27 @@ class ConcisenessEvalTest {
 }
 ```
 
+No `.tracer(...)` anywhere: the extension opens an `EvalScope` around each test, and an evaluator
+built without a tracer reports into whatever scope is open. An evaluator that *was* given one keeps
+it — configured always beats ambient — so a suite mixing the two behaves as written. Take an
+`EvalReport` parameter when you want to assert on the collected results directly.
+
 The report goes to `target/evals4j-report.md`, or wherever `-Devals4j.report=…` says. One file
 covers the whole run rather than one per class, because a mean drifting from 0.9 to 0.7 over a month
 is the signal, and per-class files fragment it.
 
-Which evaluators report into it stays explicit, because an evaluator takes its tracer at
-construction — the extension owns the report's lifetime, your suite says who feeds it. If a whole
-module is eval suites and even the annotation is noise, set
+A `.json` twin is written beside it and read back next run as a baseline, which is what puts the
+change column in the table:
+
+| evaluator | mean score | n | change |
+|---|---|---|---|
+| conciseness | 0.870 | 30 | -0.030 |
+
+Keep that file between runs — commit it, or cache it in CI — and the report shows movement rather
+than a snapshot. `-Devals4j.report.maxDrop=0.05` fails the run when a key falls further than you will
+tolerate.
+
+If a whole module is eval suites and even the annotation is noise, set
 `junit.jupiter.extensions.autodetection.enabled=true` and drop it; the extension registers itself
 through `META-INF/services`. JUnit leaves autodetection off by default, so nothing happens until you
 ask for it.

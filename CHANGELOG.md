@@ -8,7 +8,31 @@ in [PARITY.md](PARITY.md).
 In progress. `main` builds as `0.4.0-SNAPSHOT`; the version on Maven Central is
 [0.3.0](#030--2026-08-04). Upstream OpenEvals is still unchanged since its 0.2.0 tag — 65 commits
 ahead of `43fd6af`, all of them dependency and lockfile bumps — so this release is evals4j's own work
-again.
+again: it makes the report show a trend, which its own docs had claimed since 0.2.0, and removes the
+per-evaluator tracer wiring that 0.3.0's extension could not avoid.
+
+### Added
+
+- `EvalScope`, a tracer that evaluators fall back to when they were not given one. `ScorerRunner`
+  consults it only for an evaluator with no tracer configured, so an explicit one — including
+  `NO_OP` — always wins.
+
+  It is a dynamic scope rather than a global default: opened by a caller, confined to that thread,
+  closed again, and nesting restores what was there before. All four asynchronous hand-offs capture
+  it and re-open it on the far side, since a thread-confined value does not follow work onto a pool.
+- `EvalReport.writeJson` / `readJson` and a `writeMarkdown` overload taking a baseline, so a run can
+  be compared against the one before it.
+- `EvalReportExtension` writes that JSON beside the Markdown and reads it back as the next run's
+  baseline, adding a change column to the table. `evals4j.report.maxDrop` optionally fails the run
+  when a key falls further than that; it is evaluated once the run ends, because a key scored by two
+  classes only has a complete mean once both have run.
+
+### Changed
+
+- **`@EvalSuite` no longer needs `.tracer(report)` on every evaluator.** It opens an `EvalScope`
+  around each test carrying the run's report. Suites that pass a tracer explicitly are unaffected.
+- Evaluators keep an unset tracer as `null` instead of collapsing it to `NO_OP` at construction,
+  which is what lets the fallback happen. No effect on an evaluator that was given one.
 
 ## 0.3.0 — 2026-08-04
 

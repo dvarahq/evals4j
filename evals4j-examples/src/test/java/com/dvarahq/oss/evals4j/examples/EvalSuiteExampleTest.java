@@ -3,7 +3,7 @@ package com.dvarahq.oss.evals4j.examples;
 import com.dvarahq.oss.evals4j.EvalRequest;
 import com.dvarahq.oss.evals4j.judge.LlmAsJudge;
 import com.dvarahq.oss.evals4j.junit5.EvalAssert;
-import com.dvarahq.oss.evals4j.junit5.EvalReport;
+import com.dvarahq.oss.evals4j.junit5.EvalSuite;
 import com.dvarahq.oss.evals4j.message.ChatMessage;
 import com.dvarahq.oss.evals4j.message.ToolCall;
 import com.dvarahq.oss.evals4j.prompt.Prompts;
@@ -12,7 +12,6 @@ import com.dvarahq.oss.evals4j.spi.JudgeModel;
 import com.dvarahq.oss.evals4j.trajectory.ToolArgsMatchMode;
 import com.dvarahq.oss.evals4j.trajectory.TrajectoryMatchEvaluator;
 import com.dvarahq.oss.evals4j.trajectory.TrajectoryMatchMode;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,7 +19,6 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.nio.file.Path;
 import java.util.List;
 
 /**
@@ -28,9 +26,10 @@ import java.util.List;
  *
  * <p>Two things are worth copying from this. First, the deterministic checks are separated from the
  * model-backed ones, so the cheap, never-flaky part of the suite runs on every commit while the
- * expensive part is opt-in. Second, an {@link EvalReport} is attached to every judge and written at
- * the end: for LLM scores the trend across runs is the signal, and a green tick alone cannot show
- * you that last week's 0.9 is now a 0.7.
+ * expensive part is opt-in. Second, the model-backed suite carries {@link EvalSuite}, so every judge
+ * it builds reports into one run report without being wired to it, and that report is written and
+ * compared against the previous run automatically: for LLM scores the trend is the signal, and a
+ * green tick alone cannot show you that last week's 0.9 is now a 0.7.
  */
 class EvalSuiteExampleTest {
 
@@ -83,10 +82,9 @@ class EvalSuiteExampleTest {
 
     /** Model-backed checks. Opt-in, because they cost money and are not deterministic. */
     @Nested
+    @EvalSuite
     @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
     class ModelBacked {
-
-        private static final EvalReport REPORT = new EvalReport();
 
         private static LlmAsJudge conciseness;
         private static LlmAsJudge correctness;
@@ -94,25 +92,19 @@ class EvalSuiteExampleTest {
         @BeforeAll
         static void setUp() {
             JudgeModel judge = Models.springAiJudge();
-            // Attaching the report to each judge is what makes the summary possible.
+            // No tracer wiring: @EvalSuite opens a scope around each test and these judges, built
+            // without one, report into it.
             conciseness = LlmAsJudge.builder()
                     .prompt(Prompts.CONCISENESS_PROMPT)
                     .feedbackKey("conciseness")
                     .model(judge)
-                    .tracer(REPORT)
                     .build();
             correctness = LlmAsJudge.builder()
                     .prompt(Prompts.CORRECTNESS_PROMPT)
                     .feedbackKey("correctness")
                     .model(judge)
                     .continuous(true)
-                    .tracer(REPORT)
                     .build();
-        }
-
-        @AfterAll
-        static void writeReport() {
-            REPORT.writeMarkdown(Path.of("target/evals.md"));
         }
 
         /**
@@ -150,7 +142,6 @@ class EvalSuiteExampleTest {
                             .prompt(Prompts.ANSWER_RELEVANCE_PROMPT)
                             .feedbackKey("relevance")
                             .model(Models.springAiJudge())
-                            .tracer(REPORT)
                             .build()
                             .evaluate(question, answer)));
         }

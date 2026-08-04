@@ -97,9 +97,10 @@ complete structured response.
 Ported from OpenEvals `0.2.0` (commit `43fd6af`). **That version number is upstream's, not
 evals4j's** — the two happen to share it, which is easy to misread in release notes.
 
-`43fd6af` was still the tip of upstream `main` when evals4j 0.2.0 was prepared: the commits after the
-`openevals==0.2.0` tag are dependency bumps and lockfile syncs, touching only `js/package.json`,
-`js/yarn.lock`, `python/pyproject.toml` and `python/uv.lock`. There is no port work outstanding. To
-re-check, look at whether
+Re-checked while preparing evals4j 0.4.0: upstream `main` is 65 commits past `43fd6af`, and the
+comparison still touches only `js/package.json`, `js/yarn.lock`, `python/pyproject.toml` and
+`python/uv.lock` — dependency bumps and lockfile syncs. There is no port work outstanding.
+
+To re-check again, look at whether
 [the comparison](https://github.com/langchain-ai/openevals/compare/openevals==0.2.0...main) still
 lists only those four files; the prompt checksum test is what will notice if the catalog diverges.

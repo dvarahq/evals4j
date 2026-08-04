@@ -15,7 +15,7 @@ major-version-61 bytecode), built on JDK 21. Root package `com.dvarahq.oss.evals
 | `evals4j-springai` / `evals4j-langchain4j` | thin adapters implementing `JudgeModel` |
 | `evals4j-spring-boot-starter` | autoconfiguration; Spring AI wins when both are present |
 | `evals4j-sandbox` | Docker + local `SandboxRunner` |
-| `evals4j-junit5` | assertions, `EvalReport` |
+| `evals4j-junit5` | assertions, `EvalReport`, `@EvalSuite` |
 | `evals4j-examples` | runnable examples. Built by CI, **never published** |
 | `evals4j-bom` | dependency management |
 
@@ -53,7 +53,7 @@ This is a port, and the value is in matching upstream, not in improving on it.
 Tag and push.
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.4.0 && git push origin v0.4.0
 ```
 
 Auto-publish is on, so a tag goes live on Central without a portal visit. **A published version is
@@ -61,7 +61,7 @@ permanent** — Central cannot replace or withdraw one. The safety net is the dr
 signs everything without uploading:
 
 ```bash
-gh workflow run release.yml -f version=0.2.0 -f dryRun=true
+gh workflow run release.yml -f version=0.4.0 -f dryRun=true
 ```
 
 Two traps that cost real time during 0.1.0, both fixed but worth not re-introducing:
