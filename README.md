@@ -41,7 +41,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
     <dependency>
       <groupId>com.dvarahq.oss</groupId>
       <artifactId>evals4j-bom</artifactId>
-      <version>0.2.0</version>
+      <version>0.3.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -340,11 +340,10 @@ Failure messages carry the judge's reasoning, because "expected true but was fal
 nothing about an LLM score.
 
 `EvalReport` implements `EvalTracer`; register it on your evaluators and write a summary at the end
-of the run — the trend across runs is what matters, not one pass or fail. On 0.2.0 you hold the
-report yourself and call `writeMarkdown` in an `@AfterAll`.
+of the run — the trend across runs is what matters, not one pass or fail.
 
-**Unreleased, on `main` for 0.3.0.** `@EvalSuite` does that part for you: it supplies the report as a
-test parameter, shares one across every class in the run, and writes it out.
+`@EvalSuite` does the bookkeeping: it supplies the report as a test parameter, shares one across
+every class in the run, and writes it out, so no suite needs an `@AfterAll` calling `writeMarkdown`.
 
 ```java
 @EvalSuite

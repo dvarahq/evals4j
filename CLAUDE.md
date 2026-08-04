@@ -2,7 +2,7 @@
 
 A Java port of LangChain's [OpenEvals](https://github.com/langchain-ai/openevals) (MIT, reviewed at
 commit `43fd6af`, v0.2.0) for **Spring AI** and **LangChain4j**. Published to Maven Central under
-`com.dvarahq.oss`; `0.2.0` is live.
+`com.dvarahq.oss`; `0.3.0` is live.
 
 ## Layout
 
