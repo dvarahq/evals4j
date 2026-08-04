@@ -75,7 +75,9 @@ public interface Evaluator {
 
     /** Wraps a scorer as an evaluator. The entry point for custom evaluators. */
     static Evaluator from(String runName, String feedbackKey, Scorer scorer) {
-        return from(runName, feedbackKey, scorer, EvalTracer.NO_OP);
+        // null, not NO_OP — see ExactMatch. This overload is how custom evaluators are built, so
+        // collapsing to NO_OP here would opt every one of them out of EvalScope fallback.
+        return from(runName, feedbackKey, scorer, null);
     }
 
     static Evaluator from(String runName, String feedbackKey, Scorer scorer, EvalTracer tracer) {

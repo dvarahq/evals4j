@@ -4,6 +4,7 @@ import com.dvarahq.oss.evals4j.code.CodeLlmAsJudge;
 import com.dvarahq.oss.evals4j.judge.LlmAsJudge;
 import com.dvarahq.oss.evals4j.message.ChatMessage;
 import com.dvarahq.oss.evals4j.result.EvaluatorResult;
+import com.dvarahq.oss.evals4j.result.Score;
 import com.dvarahq.oss.evals4j.simulate.MultiturnSimulation;
 import com.dvarahq.oss.evals4j.spi.EvalTracer;
 import com.dvarahq.oss.evals4j.string.ExactMatch;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -83,6 +85,21 @@ class EvalScopeTest {
 
         // NO_OP is a deliberate choice, not an absence, so the scope must not override it.
         assertThat(ambient.keys).isEmpty();
+    }
+
+    @Test
+    void aCustomEvaluatorReportsToTheOpenScope() {
+        RecordingTracer tracer = new RecordingTracer();
+        Evaluator custom = Evaluator.from(
+                "custom", "custom_key", request -> new ScorerOutput.Single(Score.of(true), null, Map.of(), null));
+
+        try (EvalScope.Handle ignored = EvalScope.open(tracer)) {
+            custom.evaluate(matching());
+        }
+
+        // Evaluator.from(runName, feedbackKey, scorer) is the documented entry point for a custom
+        // evaluator. It once passed NO_OP rather than null, which opted every one of them out.
+        assertThat(tracer.keys).containsExactly("custom_key");
     }
 
     @Test
