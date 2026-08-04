@@ -41,7 +41,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
     <dependency>
       <groupId>com.dvarahq.oss</groupId>
       <artifactId>evals4j-bom</artifactId>
-      <version>0.3.0</version>
+      <version>0.4.0</version>
       <type>pom</type>
       <scope>import</scope>
     </dependency>
@@ -56,7 +56,7 @@ Requires **Java 17+**. Add the BOM, then whichever modules you need.
 | `evals4j-langchain4j` | drives evaluators with a LangChain4j `ChatModel` |
 | `evals4j-spring-boot-starter` | auto-configures whichever of the two is on your classpath |
 | `evals4j-sandbox` | Docker and local sandbox runners, for evaluating generated code |
-| `evals4j-junit5` | assertions and a report for eval suites |
+| `evals4j-junit5` | assertions, and `@EvalSuite` to report the trend across runs |
 
 Runnable examples live in [`evals4j-examples`](evals4j-examples) — start with
 [`AgentTrajectoryExample`](evals4j-examples/src/main/java/com/dvarahq/oss/evals4j/examples/AgentTrajectoryExample.java),

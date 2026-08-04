@@ -3,13 +3,12 @@
 Notable changes per release. Versions are evals4j's own; the OpenEvals version it ports is recorded
 in [PARITY.md](PARITY.md).
 
-## 0.4.0 — unreleased
+## 0.4.0 — 2026-08-04
 
-In progress. `main` builds as `0.4.0-SNAPSHOT`; the version on Maven Central is
-[0.3.0](#030--2026-08-04). Upstream OpenEvals is still unchanged since its 0.2.0 tag — 65 commits
-ahead of `43fd6af`, all of them dependency and lockfile bumps — so this release is evals4j's own work
-again: it makes the report show a trend, which its own docs had claimed since 0.2.0, and removes the
-per-evaluator tracer wiring that 0.3.0's extension could not avoid.
+Upstream OpenEvals is still unchanged since its 0.2.0 tag — 65 commits ahead of `43fd6af`, all of
+them dependency and lockfile bumps — so this release is evals4j's own work again: it makes the report
+show a trend, which its own docs had claimed since 0.2.0, and removes the per-evaluator tracer wiring
+that 0.3.0's extension could not avoid.
 
 ### Added
 
@@ -27,12 +26,20 @@ per-evaluator tracer wiring that 0.3.0's extension could not avoid.
   when a key falls further than that; it is evaluated once the run ends, because a key scored by two
   classes only has a complete mean once both have run.
 
+  That end-of-run hook needs **JUnit 5.13 or newer**, which is when Jupiter began closing
+  `AutoCloseable` values left in its store. On an older Jupiter, or with
+  `junit.jupiter.extensions.store.close.autocloseable.enabled=false`, the report is still written but
+  the gate never fires. Everything else in the extension works on any Jupiter 5.
+
 ### Changed
 
 - **`@EvalSuite` no longer needs `.tracer(report)` on every evaluator.** It opens an `EvalScope`
   around each test carrying the run's report. Suites that pass a tracer explicitly are unaffected.
 - Evaluators keep an unset tracer as `null` instead of collapsing it to `NO_OP` at construction,
-  which is what lets the fallback happen. No effect on an evaluator that was given one.
+  which is what lets the fallback happen. This includes
+  `Evaluator.from(runName, feedbackKey, scorer)`, the entry point for custom evaluators, so a custom
+  evaluator picks up an open scope exactly as a built-in one does. No effect on an evaluator that was
+  given a tracer.
 
 ## 0.3.0 — 2026-08-04
 

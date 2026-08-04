@@ -59,6 +59,11 @@ import java.util.Map;
  * report shows movement rather than a single snapshot; delete it and the next run simply starts over.
  * Set {@value #MAX_DROP_PROPERTY} to fail the run when a key falls further than you will tolerate.
  *
+ * <p>That gate runs when the whole run ends, which needs <strong>JUnit 5.13 or newer</strong> — that
+ * is the version in which Jupiter began closing {@link AutoCloseable} values left in its store. On an
+ * older Jupiter, or with {@code junit.jupiter.extensions.store.close.autocloseable.enabled=false},
+ * the report is still written and the change column still appears; only the gate goes quiet.
+ *
  * <p><strong>Automatic registration.</strong> This extension is declared in {@code META-INF/services},
  * so a build that sets {@code junit.jupiter.extensions.autodetection.enabled=true} gets it on every
  * test class without any annotation — which is what you want when a whole module is eval suites.
