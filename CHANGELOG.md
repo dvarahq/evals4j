@@ -3,6 +3,13 @@
 Notable changes per release. Versions are evals4j's own; the OpenEvals version it ports is recorded
 in [PARITY.md](PARITY.md).
 
+## 0.4.0 — unreleased
+
+In progress. `main` builds as `0.4.0-SNAPSHOT`; the version on Maven Central is
+[0.3.0](#030--2026-08-04). Upstream OpenEvals is still unchanged since its 0.2.0 tag — 65 commits
+ahead of `43fd6af`, all of them dependency and lockfile bumps — so this release is evals4j's own work
+again.
+
 ## 0.3.0 — 2026-08-04
 
 The JUnit 5 extension 0.2.0 promised, and nothing else — `evals4j-junit5` is the only module that
