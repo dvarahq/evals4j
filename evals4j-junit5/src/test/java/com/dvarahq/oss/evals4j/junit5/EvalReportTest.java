@@ -101,6 +101,33 @@ class EvalReportTest {
     }
 
     @Test
+    void writesAnEmptyJsonReportThatReadsBackAsAnEmptyBaseline(@TempDir Path directory) {
+        Path destination = directory.resolve("evals.json");
+
+        new EvalReport().writeJson(destination);
+
+        assertThat(EvalReport.readJson(destination)).isEmpty();
+    }
+
+    @Test
+    void jsonReportRoundTripPreservesKeySummaries(@TempDir Path directory) {
+        EvalReport report = new EvalReport();
+        record(report, "conciseness", 1.0, null);
+        record(report, "conciseness", 0.5, null);
+        record(report, "correctness", 0.25, null);
+
+        Path destination = directory.resolve("nested/evals.json");
+        report.writeJson(destination);
+
+        assertThat(EvalReport.readJson(destination))
+                .containsExactly(
+                        org.assertj.core.data.MapEntry.entry(
+                                "conciseness", new EvalReport.KeySummary(0.75, 2)),
+                        org.assertj.core.data.MapEntry.entry(
+                                "correctness", new EvalReport.KeySummary(0.25, 1)));
+    }
+
+    @Test
     void collectsResultsFromParallelEvaluations() throws Exception {
         // The class documents itself as thread-safe; a suite running tests in parallel relies on it.
         EvalReport report = new EvalReport();
