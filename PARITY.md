@@ -97,10 +97,17 @@ complete structured response.
 Ported from OpenEvals `0.2.0` (commit `43fd6af`). **That version number is upstream's, not
 evals4j's** — the two happen to share it, which is easy to misread in release notes.
 
-Re-checked while preparing evals4j 0.4.0: upstream `main` is 65 commits past `43fd6af`, and the
-comparison still touches only `js/package.json`, `js/yarn.lock`, `python/pyproject.toml` and
-`python/uv.lock` — dependency bumps and lockfile syncs. There is no port work outstanding.
+Two comparisons are in play here and they are easy to conflate, so both are spelled out. The
+`openevals==0.2.0` tag is `cf22d62` (April 2026); `43fd6af`, the commit this port was reviewed at, is
+itself **63 commits past that tag**. So a count measured from the tag will always run ~63 ahead of
+one measured from the reviewed commit, and only the latter says anything about outstanding port work.
 
-To re-check again, look at whether
-[the comparison](https://github.com/langchain-ai/openevals/compare/openevals==0.2.0...main) still
-lists only those four files; the prompt checksum test is what will notice if the catalog diverges.
+Re-checked while preparing evals4j 0.5.0: upstream `main` is **2 commits past `43fd6af`** (65 past
+the tag). Those two are a dependabot `nltk` bump and its merge, touching `python/uv.lock` alone; the
+comparison from the tag touches only `js/package.json`, `js/yarn.lock`, `python/pyproject.toml` and
+`python/uv.lock`. Dependency bumps and lockfile syncs either way — there is no port work outstanding.
+
+To re-check again, use
+[the comparison against the reviewed commit](https://github.com/langchain-ai/openevals/compare/43fd6af...main),
+not the one against the tag, and look at whether it still lists only those lockfile and manifest
+files; the prompt checksum test is what will notice if the catalog diverges.

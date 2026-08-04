@@ -3,6 +3,23 @@
 Notable changes per release. Versions are evals4j's own; the OpenEvals version it ports is recorded
 in [PARITY.md](PARITY.md).
 
+## 0.5.0 — unreleased
+
+In progress. `main` builds as `0.5.0-SNAPSHOT`; the version on Maven Central is
+[0.4.0](#040--2026-08-04).
+
+### Documentation
+
+- Corrected the upstream re-check in [PARITY.md](PARITY.md). It read "upstream `main` is 65 commits
+  past `43fd6af`", which conflated two comparisons: 65 is measured from the `openevals==0.2.0` tag
+  (`cf22d62`), while `43fd6af` — the commit this port was reviewed at — is itself 63 commits past
+  that tag, leaving `main` only 2 commits ahead of it. PARITY now names both bases and points the
+  re-check at the reviewed commit, since that is the count that says anything about port work.
+
+  The 0.4.0 entry below repeats the same mislabelling and is left standing as the historical record.
+  Neither number changes the conclusion either version drew: every commit in both comparisons is a
+  dependency or lockfile bump.
+
 ## 0.4.0 — 2026-08-04
 
 Upstream OpenEvals is still unchanged since its 0.2.0 tag — 65 commits ahead of `43fd6af`, all of
