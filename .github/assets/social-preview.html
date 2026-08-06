@@ -1,0 +1,119 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1280px; height: 640px; }
+  body {
+    background: #0B1120;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    position: relative;
+    overflow: hidden;
+  }
+  /* soft glow, upper-left, so the title sits in light */
+  .glow {
+    position: absolute; width: 900px; height: 900px;
+    left: -260px; top: -420px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(56,189,150,0.20) 0%, rgba(56,189,150,0.06) 42%, rgba(56,189,150,0) 68%);
+  }
+  .glow2 {
+    position: absolute; width: 760px; height: 760px;
+    right: -300px; bottom: -380px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(96,140,255,0.16) 0%, rgba(96,140,255,0) 66%);
+  }
+  /* faint grid, reads as texture not pattern at thumbnail size */
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, #000 30%, transparent 78%);
+  }
+
+  .wrap { position: relative; height: 100%; padding: 74px 80px; display: flex; }
+  .left { flex: 1; display: flex; flex-direction: column; }
+
+  .rule { width: 56px; height: 5px; border-radius: 3px; background: #38BD96; margin-bottom: 30px; }
+
+  h1 {
+    font-size: 104px; line-height: 0.98; letter-spacing: -3.5px;
+    color: #F2F6FA; font-weight: 700;
+  }
+  h1 .j { color: #38BD96; }
+
+  .tag {
+    margin-top: 20px; font-size: 33px; line-height: 1.3;
+    color: #AFBCCE; font-weight: 500; letter-spacing: -0.4px;
+  }
+
+  .chips { margin-top: 34px; display: flex; gap: 11px; flex-wrap: wrap; max-width: 660px; }
+  .chip {
+    font-size: 19px; color: #C6D2E2; padding: 9px 17px;
+    border: 1px solid rgba(255,255,255,0.16); border-radius: 999px;
+    background: rgba(255,255,255,0.035); white-space: nowrap;
+  }
+
+  .foot {
+    margin-top: auto; display: flex; align-items: center; gap: 14px;
+    font-size: 21px; color: #7D8CA3; letter-spacing: 0.1px;
+  }
+  .foot b { color: #A9B7C9; font-weight: 600; }
+  .dot { width: 4px; height: 4px; border-radius: 50%; background: #46536A; }
+
+  /* right panel: three evaluator rows with verdict pills — says "evaluation" at a glance */
+  .panel {
+    width: 372px; align-self: center; margin-left: 40px;
+    border: 1px solid rgba(255,255,255,0.11); border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+    padding: 24px 24px 22px;
+  }
+  .panel-h {
+    font-family: Menlo, monospace; font-size: 16px; color: #7A8AA1;
+    letter-spacing: 0.3px; margin-bottom: 18px;
+  }
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 0; border-top: 1px solid rgba(255,255,255,0.075);
+  }
+  .row:first-of-type { border-top: none; }
+  .k { font-family: Menlo, monospace; font-size: 19px; color: #D4DEEB; }
+  .pill {
+    font-family: Menlo, monospace; font-size: 16px; font-weight: 700;
+    padding: 5px 13px; border-radius: 7px;
+  }
+  .pass { color: #4ADE9E; background: rgba(74,222,158,0.14); }
+  .fail { color: #FF7B72; background: rgba(255,123,114,0.14); }
+  .num  { color: #7FB8FF; background: rgba(127,184,255,0.14); }
+</style>
+
+<div class="glow"></div>
+<div class="glow2"></div>
+<div class="grid"></div>
+
+<div class="wrap">
+  <div class="left">
+    <div class="rule"></div>
+    <h1>evals4<span class="j">j</span></h1>
+    <div class="tag">LLM evaluation for Java</div>
+
+    <div class="chips">
+      <span class="chip">LLM-as-judge</span>
+      <span class="chip">RAG</span>
+      <span class="chip">Agent trajectories</span>
+      <span class="chip">Structured output</span>
+    </div>
+
+    <div class="foot">
+      <b>Spring AI</b><span class="dot"></span><b>LangChain4j</b><span class="dot"></span><b>JUnit 5</b><span class="dot"></span>Java 17+
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h">EvaluatorResult</div>
+    <div class="row"><span class="k">conciseness</span><span class="pill fail">false</span></div>
+    <div class="row"><span class="k">correctness</span><span class="pill pass">true</span></div>
+    <div class="row"><span class="k">hallucination</span><span class="pill pass">true</span></div>
+    <div class="row"><span class="k">trajectory</span><span class="pill num">0.83</span></div>
+  </div>
+</div>
