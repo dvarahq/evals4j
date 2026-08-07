@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 class EvalReportTest {
 
@@ -116,15 +117,14 @@ class EvalReportTest {
         record(report, "conciseness", 0.5, null);
         record(report, "correctness", 0.25, null);
 
+        // Keep the nested path to cover parent-directory creation during JSON report writes.
         Path destination = directory.resolve("nested/evals.json");
         report.writeJson(destination);
 
         assertThat(EvalReport.readJson(destination))
-                .containsExactly(
-                        org.assertj.core.data.MapEntry.entry(
-                                "conciseness", new EvalReport.KeySummary(0.75, 2)),
-                        org.assertj.core.data.MapEntry.entry(
-                                "correctness", new EvalReport.KeySummary(0.25, 1)));
+                .containsOnly(
+                        entry("conciseness", new EvalReport.KeySummary(0.75, 2)),
+                        entry("correctness", new EvalReport.KeySummary(0.25, 1)));
     }
 
     @Test
