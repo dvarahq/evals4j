@@ -142,11 +142,13 @@ class EvalReportExtensionTest {
                 .failed()
                 .list();
 
+        assertThat(directory.resolve("evals.md")).exists();
         assertThat(failedContainers).singleElement().satisfies(event -> {
             Throwable failure = event.getRequiredPayload(TestExecutionResult.class)
                     .getThrowable()
                     .orElseThrow();
             assertThat(failure)
+                    // Jupiter wraps extension failures, so the invalid threshold is carried as the cause.
                     .hasCauseInstanceOf(IllegalArgumentException.class)
                     .cause()
                     .hasMessageContaining(EvalReportExtension.MAX_DROP_PROPERTY)
