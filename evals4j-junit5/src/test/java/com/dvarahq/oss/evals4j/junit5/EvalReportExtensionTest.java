@@ -13,6 +13,10 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
+import static org.junit.platform.testkit.engine.EventConditions.event;
+import static org.junit.platform.testkit.engine.EventConditions.finishedWithFailure;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.instanceOf;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.message;
 
 /**
  * Runs the extension through the real Jupiter engine.
@@ -137,6 +141,30 @@ class EvalReportExtensionTest {
                 .execute()
                 .containerEvents()
                 .assertStatistics(stats -> stats.failed(0));
+    }
+
+    /**
+     * A typo in {@code evals4j.report.maxDrop} must fail with a message that names the property and
+     * the bad value — not a bare {@link NumberFormatException} from {@link Double#parseDouble}.
+     */
+    @Test
+    void rejectsANonNumericMaxDrop(@TempDir Path directory) {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        System.setProperty(EvalReportExtension.MAX_DROP_PROPERTY, "not-a-number");
+
+        EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(ScoringSuite.class))
+                .execute()
+                .containerEvents()
+                .assertThatEvents()
+                .haveAtLeastOne(
+                        event(
+                                finishedWithFailure(
+                                        instanceOf(IllegalArgumentException.class),
+                                        message(
+                                                m -> m.contains(EvalReportExtension.MAX_DROP_PROPERTY)
+                                                        && m.contains("not-a-number")))));
     }
 
     @Test
