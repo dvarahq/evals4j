@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 class EvalReportTest {
 
@@ -98,6 +99,32 @@ class EvalReportTest {
         new EvalReport().writeMarkdown(destination);
 
         assertThat(Files.readString(destination)).contains("# Eval report");
+    }
+
+    @Test
+    void writesAnEmptyJsonReportThatReadsBackAsAnEmptyBaseline(@TempDir Path directory) {
+        Path destination = directory.resolve("evals.json");
+
+        new EvalReport().writeJson(destination);
+
+        assertThat(EvalReport.readJson(destination)).isEmpty();
+    }
+
+    @Test
+    void jsonReportRoundTripPreservesKeySummaries(@TempDir Path directory) {
+        EvalReport report = new EvalReport();
+        record(report, "conciseness", 1.0, null);
+        record(report, "conciseness", 0.5, null);
+        record(report, "correctness", 0.25, null);
+
+        // Keep the nested path to cover parent-directory creation during JSON report writes.
+        Path destination = directory.resolve("nested/evals.json");
+        report.writeJson(destination);
+
+        assertThat(EvalReport.readJson(destination))
+                .containsOnly(
+                        entry("conciseness", new EvalReport.KeySummary(0.75, 2)),
+                        entry("correctness", new EvalReport.KeySummary(0.25, 1)));
     }
 
     @Test
