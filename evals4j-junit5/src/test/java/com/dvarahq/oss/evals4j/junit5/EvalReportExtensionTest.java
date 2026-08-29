@@ -6,6 +6,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.platform.engine.TestExecutionResult;
 import org.junit.platform.testkit.engine.EngineTestKit;
 
 import java.nio.file.Files;
@@ -124,6 +125,35 @@ class EvalReportExtensionTest {
 
         // The report is still written: you cannot act on a regression you cannot see.
         assertThat(directory.resolve("evals.md")).exists();
+    }
+
+    @Test
+    void theGateRejectsANonNumericThreshold(@TempDir Path directory) throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        System.setProperty(EvalReportExtension.MAX_DROP_PROPERTY, "not-a-number");
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 1.0, 1);
+
+        var failedContainers = EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(MismatchSuite.class))
+                .execute()
+                .containerEvents()
+                .assertStatistics(stats -> stats.failed(1))
+                .failed()
+                .list();
+
+        assertThat(directory.resolve("evals.md")).exists();
+        assertThat(failedContainers).singleElement().satisfies(event -> {
+            Throwable failure = event.getRequiredPayload(TestExecutionResult.class)
+                    .getThrowable()
+                    .orElseThrow();
+            assertThat(failure)
+                    // Jupiter wraps extension failures, so the invalid threshold is carried as the cause.
+                    .hasCauseInstanceOf(IllegalArgumentException.class)
+                    .cause()
+                    .hasMessageContaining(EvalReportExtension.MAX_DROP_PROPERTY)
+                    .hasMessageContaining("not-a-number");
+        });
     }
 
     @Test
