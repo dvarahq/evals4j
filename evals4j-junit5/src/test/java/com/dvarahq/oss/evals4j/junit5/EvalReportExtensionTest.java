@@ -128,6 +128,51 @@ class EvalReportExtensionTest {
     }
 
     @Test
+    void theGateWaitsForBothClassesBeforeJudgingTheMean(@TempDir Path directory)
+            throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        System.setProperty(EvalReportExtension.MAX_DROP_PROPERTY, "0.1");
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 0.5, 2);
+
+        // The first class scores 0.0, below the gate; the complete run scores 0.5.
+        var execution = EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(MismatchSuite.class), selectClass(ScoringSuite.class))
+                .execute();
+        execution.testEvents().assertStatistics(stats -> stats.succeeded(2).failed(0));
+        execution.containerEvents().assertStatistics(stats -> stats.failed(0));
+        assertThat(EvalReport.readJson(directory.resolve("evals.json")))
+                .containsKey(ExactMatch.FEEDBACK_KEY)
+                .extractingByKey(ExactMatch.FEEDBACK_KEY)
+                .satisfies(summary -> {
+                    assertThat(summary.mean()).isEqualTo(0.5);
+                    assertThat(summary.count()).isEqualTo(2);
+                });
+    }
+
+    @Test
+    void theGateFailsOnceForACombinedMeanBelowTheThreshold(@TempDir Path directory)
+            throws Exception {
+        System.setProperty(
+                EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
+        System.setProperty(EvalReportExtension.MAX_DROP_PROPERTY, "0.1");
+        givenPreviousRun(directory.resolve("evals.json"), ExactMatch.FEEDBACK_KEY, 1.0, 2);
+
+        var execution = EngineTestKit.engine("junit-jupiter")
+                .selectors(selectClass(MismatchSuite.class), selectClass(ScoringSuite.class))
+                .execute();
+        execution.testEvents().assertStatistics(stats -> stats.succeeded(2).failed(0));
+        execution.containerEvents().assertStatistics(stats -> stats.failed(1));
+        assertThat(EvalReport.readJson(directory.resolve("evals.json")))
+                .containsKey(ExactMatch.FEEDBACK_KEY)
+                .extractingByKey(ExactMatch.FEEDBACK_KEY)
+                .satisfies(summary -> {
+                    assertThat(summary.mean()).isEqualTo(0.5);
+                    assertThat(summary.count()).isEqualTo(2);
+                });
+    }
+
+    @Test
     void theGateRejectsANonNumericThreshold(@TempDir Path directory) throws Exception {
         System.setProperty(
                 EvalReportExtension.REPORT_PATH_PROPERTY, directory.resolve("evals.md").toString());
