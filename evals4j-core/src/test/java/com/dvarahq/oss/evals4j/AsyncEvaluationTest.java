@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -36,6 +37,21 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * that tracing survives the trip.
  */
 class AsyncEvaluationTest {
+
+    @Test
+    void defaultJudgeModelAsyncCallPreservesTheAmbientEvalScope() throws Exception {
+        AtomicReference<EvalTracer> observed = new AtomicReference<>();
+        JudgeModel model = (messages, schema) -> {
+            observed.set(EvalScope.current());
+            return Json.object();
+        };
+
+        try (EvalScope.Handle ignored = EvalScope.open(EvalTracer.NO_OP)) {
+            model.invokeStructuredAsync(List.of(), Json.object()).get(5, TimeUnit.SECONDS);
+            assertThat(observed.get()).isSameAs(EvalTracer.NO_OP);
+        }
+        assertThat(EvalScope.current()).isNull();
+    }
 
     private static ObjectNode scoreResponse(boolean score, String reasoning) {
         ObjectNode node = Json.object();

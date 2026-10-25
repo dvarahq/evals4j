@@ -1,6 +1,7 @@
 package com.dvarahq.oss.evals4j.spi;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.dvarahq.oss.evals4j.EvalScope;
 import com.dvarahq.oss.evals4j.message.ChatMessage;
 
 import java.util.List;
@@ -35,7 +36,8 @@ public interface JudgeModel {
      */
     default CompletableFuture<JsonNode> invokeStructuredAsync(
             List<ChatMessage> messages, JsonNode jsonSchema) {
-        return CompletableFuture.supplyAsync(() -> invokeStructured(messages, jsonSchema));
+        return CompletableFuture.supplyAsync(
+                EvalScope.capturing(() -> invokeStructured(messages, jsonSchema)));
     }
 
     /** Thrown when the judge model cannot be called or its response cannot be read. */
